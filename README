@@ -1,1 +1,7 @@
+Overall: Build an IOS app that utilizes an AI model to generate a schedule for people's months based on user input.
 
+User Input:
+What the user will provide, examples: work hours, appointments, preferences for gym/study/leisure, sleep schedule.
+
+Expected Output:
+A generated monthly calendar as a .ics file for the user to download for their respective calendar app
