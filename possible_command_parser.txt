@@ -1,0 +1,4 @@
+"Add a dentist appointment next Tuesday at 3pm"
+→ intent: add_event
+→ datetime: 2025-02-04T15:00
+→ location: dentist (need geocoding)
