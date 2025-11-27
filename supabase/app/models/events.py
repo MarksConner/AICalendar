@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, TIMESTAMP
+from sqlalchemy import Column, String, Text,Integer, TIMESTAMP
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import func
@@ -11,8 +11,8 @@ class Events(Base):
     event_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_name = Column(Text, nullable=False)
     event_description = Column(Text)
-    priority_rank = Column(int)
+    priority_rank = Column(Integer)
     start_time = Column(TIMESTAMP, nullable=False)
     end_time = Column(TIMESTAMP)
-    calendar_id = Column(UUID(as_uuid=True), ForeignKey('calendars.calendar_id'))
+    calendar_id = Column(UUID(as_uuid=True), ForeignKey('calendar.calendar_id'))
     created_at = Column(TIMESTAMP, server_default=func.now())
