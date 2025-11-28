@@ -1,12 +1,9 @@
-from sqlalchemy import Column, String, Text, TIMESTAMP
+from sqlalchemy import Column, String, Boolean, Text, TIMESTAMP
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import func
 import uuid
 from .base import Base
-
-
-Base = declarative_base()
 
 class Users(Base):
     __tablename__ = 'users'
@@ -15,7 +12,11 @@ class Users(Base):
     username = Column(Text, nullable=False, unique=True)
     first_name = Column(Text, nullable=False)
     last_name = Column(Text, nullable=False)
+    password = Column(Text, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
-
+    email_verified = Column(Boolean, nullable=False, default=False)
+    email_verification_token = Column(UUID(as_uuid=True), default=uuid.uuid4)
+    email_verification_sent_at = Column(TIMESTAMP, server_default=func.now())
+    email_verification_expires_at = Column(TIMESTAMP, nullable=True)
 
 

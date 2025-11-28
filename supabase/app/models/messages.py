@@ -5,7 +5,6 @@ import uuid
 from sqlalchemy import TIMESTAMP, ForeignKey, func
 from .base import Base
 
-Base = declarative_base()
 
 class Messages(Base):
     __tablename__ = 'messages'
