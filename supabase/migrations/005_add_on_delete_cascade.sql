@@ -1,4 +1,4 @@
-
+-- If an user is eliminated all calendars and events in which that users UUID appears are also eliminated.
 ALTER TABLE public.calendar
 DROP CONSTRAINT IF EXISTS calendar_user_id_fkey;
 ALTER TABLE public.calendar
