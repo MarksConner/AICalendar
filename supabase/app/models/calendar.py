@@ -13,3 +13,4 @@ class Calendar(Base):
     date_end = Column(TIMESTAMP)
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"))
+    icsfile = Column(Text)
