@@ -18,5 +18,8 @@ class Users(Base):
     email_verification_token = Column(UUID(as_uuid=True), default=uuid.uuid4)
     email_verification_sent_at = Column(TIMESTAMP, server_default=func.now())
     email_verification_expires_at = Column(TIMESTAMP, nullable=True)
+    password_reset_token = Column(UUID(as_uuid=True), default=uuid.uuid4)
+    password_reset_sent_at = Column(TIMESTAMP, server_default=func.now())
+    password_reset_expires_at = Column(TIMESTAMP, nullable=True)
 
 
