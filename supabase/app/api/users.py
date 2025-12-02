@@ -1,9 +1,9 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.base_model_classes import UserCreate, UserLogin,EmailModel,UserEmailVerify
+from app.api.base_model_classes import UserCreate, UserLogin,UserEmailVerify, UserUpdatePassword
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
-from app.services.user_service import (create_user,delete_user_by_email,verify_user_email,get_user_by_email,get_user_by_user_id, login_credentials)
+from app.services.user_service import (create_user,delete_user_by_email,verify_user_email,get_user_by_email,get_user_by_user_id, login_credentials,reset_password_token, create_reset_token)
 from datetime import datetime, timezone
 from app.services.verify_email import mail, create_message
 router = APIRouter(prefix="/users", tags=["users"])
@@ -58,7 +58,30 @@ async def send_verification_mail(user_data: UserEmailVerify,db: Session = Depend
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    verify_link = f"http://127.0.0.1:8000/?token={user.email_verification_token}"
+    verify_link = f"http://127.0.0.1:8000/?token={user.email_verification_token}" #Replace this with real url at some point
     message = create_message([user.email], "Verify Email", verify_link)
     await mail.send_message(message)
     return {"message": "Verification email sent"}
+
+@router.post("/send_recover_password_email")
+async def send_recover_password_email(user_data: UserEmailVerify, db: Session = Depends(get_db)):
+    user = get_user_by_email(db, user_data.email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.email_verified:
+        raise HTTPException(status_code=403, detail="Email not verified")
+    create_reset_token(db, user.email)
+    verify_link = (f"http://localhost:5173/reset-password"f"?email={user.email}&token={user.password_reset_token}")
+    message = create_message([user.email], "Verify Email", verify_link)
+    await mail.send_message(message)
+    return {"message": "Email was sent"}
+
+
+@router.post("/update_password")
+async def update_password(user_data: UserUpdatePassword, db: Session = Depends(get_db)):
+    check =  reset_password_token(db,user_data.email, user_data.token, user_data.new_password)
+    if not check:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    return {"message": "Password updated successfully"}
+    
+

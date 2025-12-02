@@ -17,11 +17,12 @@ class UserLogin(BaseModel):
 
 class UserEmailVerify(BaseModel):
     email: str
-    
 
-class EmailModel(BaseModel):
-    addresses: list[str]
-    
+class UserUpdatePassword(BaseModel):
+    email: str
+    token: str
+    new_password: str
+
 #Calendar pydantic operations
 class CalendarCreate(BaseModel):
     calendar_name: str
@@ -44,7 +45,6 @@ class EventCreate(BaseModel):
     end_time: datetime
     created_at: datetime
 
-    
 
 class EventRead(EventCreate):
     event_id: UUID
