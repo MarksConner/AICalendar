@@ -38,9 +38,6 @@ def get_user_by_email(session: Session,email: str) -> Users:
     return user
 
 
-def login():
-    pass
-
 def delete_user_by_email(session: Session, email: str) -> bool:
 
     user_to_delete = session.query(Users).filter(Users.email == "n").first()
@@ -80,9 +77,44 @@ def get_user_email_by_id(session: Session,user_id: uuid)->str:
         raise ValueError("user not found")        
     return user.email
 
-#Verify email and password exist and match return a true or false. 
+#Verify email and password exist and match return bool. 
 def login_credentials(db: Session, email: str, passsword: str) -> bool:
     user = (db.query(Users).filter(Users.email == email, Users.password == passsword)).first()
     if user is None:
         return False
     return True
+
+def create_reset_token(db: Session, email: str) ->bool:
+    user = get_user_by_email(db,email)
+    if user is None:
+        return False
+    user.password_reset_token = uuid.uuid4()
+    user.password_reset_sent_at =  datetime.now(timezone.utc)
+    user.password_reset_expires_at =  datetime.now(timezone.utc) + timedelta(minutes=5)
+    db.commit()
+    db.refresh(user)    
+    return True
+    
+def reset_password_token(db: Session, email:str, token: str, new_password: str) -> bool:
+    user = get_user_by_email(db,email)
+    if user is None:
+        return False
+    if user.password_reset_token != token:
+        return False
+    if user.password_reset_token is None:
+        return False
+    if user.password_reset_expires_at is None:
+        return False
+    
+    now = datetime.now(timezone.utc)
+    
+    if now > user.password_reset_expires_at:
+        return False
+    
+    user.password = new_password
+    user.password_reset_token = None
+    user.password_reset_expires_at = None
+    user.password_reset_sent_at = None
+    db.commit()
+    db.refresh(user)
+    return True 
