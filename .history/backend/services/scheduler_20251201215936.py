@@ -56,35 +56,3 @@ class Scheduler:
                 output.append(ev.to_dict())
         return output
 
-    #Helper that searches for first free fitting slot
-    def find_slot(self, earliest_start_iso, latest_end_iso, duration_minutes):
-        earliest = datetime.fromisoformat(earliest_start_iso)
-        latest = datetime.fromisoformat(latest_end_iso)
-        duration = timedelta(minutes=duration_minutes)
-
-        #Only considering that day/window
-        candidates = [e for e in self.events if e.start.date() == earliest.date()]
-        candidates.sort(key=lambda e: e.start)
-
-        #Start with earliest start as the current start
-        current_start = earliest
-
-        for ev in candidates:
-            #If event is before current start, skip
-            if ev.end <=current_start:
-                continue
-            
-            #If there is a gap between current start and ev's start, check for fit
-            if ev.start - current_start >= duration:
-                #Gap found
-                if current_start + duration <= latest:
-                    return current_start
-
-                #Move current start to after this event has already ended
-                if ev.end > current_start:
-                    current_start = ev.end
-
-        #Check after last event in candidates
-        if latest - current_start >= duration:
-            return current_start
-        return None

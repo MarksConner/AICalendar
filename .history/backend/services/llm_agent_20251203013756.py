@@ -1,6 +1,5 @@
 from openai import OpenAI
 import os
-import json
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -45,29 +44,12 @@ Respond with JSON only.
 """
 
 def ask_llm(message: str):
-    """
-    calendar_context could include:
-    {
-      "existing_events": [...],
-      "preferences": {...}
-    }
-    """
-    context_str = json.dumps(calendar_context or {}, default=str)
-
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o-mini",     # or gpt-4o, etc.
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    "User message:\n"
-                    + message
-                    + "\n\nCurrent calendar context (JSON):\n"
-                    + context_str
-                ),
-            },
-        ],
+            {"role": "user", "content": message}
+        ]
     )
 
     output = response.choices[0].message.content

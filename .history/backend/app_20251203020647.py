@@ -16,7 +16,7 @@ class UserMessage(BaseModel):
 
 @app.post("/chat")
 def chat(data: UserMessage):
-    #Giving the agent more context PREFERENCES SHOULD BE IMPORTED, THIS IS TEMPORARY
+    #Giving the agent more context
     calendar_context = {
         "existing_events": [ev.to_dict() for ev in scheduler.events],
         "preferences": {

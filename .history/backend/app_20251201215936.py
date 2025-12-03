@@ -16,21 +16,8 @@ class UserMessage(BaseModel):
 
 @app.post("/chat")
 def chat(data: UserMessage):
-    #Giving the agent more context PREFERENCES SHOULD BE IMPORTED, THIS IS TEMPORARY
-    calendar_context = {
-        "existing_events": [ev.to_dict() for ev in scheduler.events],
-        "preferences": {
-            "work_hours": {
-                "start": "09:00",
-                "end": "17:00",
-                "days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
-            },
-            "no_late_meetings_after": "20:00"
-        }
-    }
-
     #ask the LLM
-    llm_output = ask_llm(data.message, calendar_context=calendar_context)
+    llm_output = ask_llm(data.message)
 
     if not llm_output:
         return {"error": "LLM returned an empty response"}
@@ -53,19 +40,8 @@ def chat(data: UserMessage):
         duration = int(info.get("duration_minutes", 60))
         flexible = info.get("flexible", False)
 
-        #If model didn't give a concrete time, try window-based scheduling
         if start is None:
-            earliest = info.get("earliest_start")
-            latest = info.get("latest_end")
-
-            if earliest and latest:
-                slot = scheduler.find_slot(earliest, latest, duration)
-                if slot is None:
-                    return {"Error": "No available time in that window."}
-                else:
-                    start = slot.isoformat()
-            else:
-                return{"Error": "Event datetime missing and no time window provided"}
+            return {"error": "Event datetime missing from LLM output."}
 
         #compute travel time if starting location is provided
         travel_minutes = 0
