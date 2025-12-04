@@ -19,16 +19,7 @@ export function AppShell() {
           <NavItem to="/today">Today&apos;s plan</NavItem>
           <NavItem to="/proposals">Proposals</NavItem>
         </nav>
-
-        <div className="sidebar-footer">
-          <Button
-            variant="ghost"
-            className="sidebar-logout-button"
-            onClick={() => navigate("/login")}
-          >
-            Log out
-          </Button>
-        </div>
+        
       </aside>
 
       {/* Main column */}
