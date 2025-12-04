@@ -12,9 +12,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const hasError = !!errorText;
     
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         {label && (
-          <label className="text-caption text-foreground">
+          <label className="text-caption text-foreground"
+            style={{ marginRight: "4px", marginBottom: "4px" }}>
             {label}
           </label>
         )}
