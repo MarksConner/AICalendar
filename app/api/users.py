@@ -45,11 +45,9 @@ def verify_email(token: UUID, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login_route(user: UserLogin, db: Session = Depends(get_db)):
-
     authenticated = login_credentials(db, user.email, user.password)
     if not authenticated:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
     token = create_access_token({"sub": user.email}) # Generate access token
     db_user = get_user_by_email(db, user.email) # Get user to retrieve user_id
     return {"access_token": token, "user_id": db_user.user_id,  "token_type": "bearer"}

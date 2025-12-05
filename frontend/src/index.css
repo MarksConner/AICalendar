@@ -1,68 +1,329 @@
+/* Base document styles */
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  /* Core colors (tweak these as you like) */
+  --color-bg: #f3f4f6;              /* page background */
+  --color-surface: #ffffff;         /* cards, surfaces */
+  --color-text: #0f172a;            /* main text */
+  --color-muted: #6b7280;           /* secondary text */
+  --color-border: #e5e7eb;          /* borders */
+  --color-primary: #5a85e2;         /* primary accent */
+  --color-primary-foreground: #ffffff;
+  --color-danger: #ef4444;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Shadows */
+  --shadow-card: 0 10px 25px rgba(15, 23, 42, 0.08);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Typography */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Inter",
+    "Segoe UI", sans-serif;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
-a:hover {
-  color: #535bf2;
+
+html,
+body {
+  margin: 2;
+  padding: 0;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Make #root fill the viewport height so flex layouts inside work naturally */
+#root {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Basic link styling (you can adjust or remove if you want) */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
 }
 
-button {
+/* --- Utility classes to match your design system --- */
+
+/* Backgrounds */
+.bg-bg {
+  background-color: var(--color-bg);
+}
+
+.bg-card {
+  background-color: var(--color-surface);
+}
+
+/* Text colors */
+.text-text {
+  color: var(--color-text);
+}
+
+.text-muted,
+.text-muted-foreground {
+  color: var(--color-muted);
+}
+
+/* Primary color */
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-primary-foreground {
+  color: var(--color-primary-foreground);
+}
+
+/* Borders */
+.border-border {
+  border-color: var(--color-border);
+}
+
+/* Simple surface background (e.g. for side panels) */
+.bg-surface {
+  background-color: var(--color-surface);
+}
+
+/* Status / destructive */
+.text-destructive {
+  color: var(--color-danger);
+}
+
+.bg-destructive {
+  background-color: var(--color-danger);
+}
+
+/* Shadows */
+.shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+/* Typography helpers used in Figma export */
+.text-h1 {
+  font-size: 1.75rem; /* ~28px */
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.text-h2 {
+  font-size: 1.25rem; /* ~20px */
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.text-body {
+  font-size: 0.875rem; /* ~14px */
+}
+
+.text-caption {
+  font-size: 0.75rem; /* ~12px */
+}
+/* --- App shell layout --- */
+
+.app-root {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.app-sidebar {
+  width: 220px;
+  border-right: 1px solid var(--color-border);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.sidebar-logout-button {
+  width: 100%;
+  justify-content: flex-start;
+  font-size: 13px;
+}
+
+/* --- Nav items --- */
+
+.nav-item {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--color-muted);
+  text-decoration: none;
+}
+
+.nav-item + .nav-item {
+  margin-top: 4px;
+}
+
+.nav-item:hover {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.nav-item-active {
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+/* --- Main area --- */
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-topbar {
+  height: 56px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+
+.app-content {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.app-main-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.app-right-panel {
+  width: 280px;
+  border-left: 1px solid var(--color-border);
+  padding: 16px;
+}
+
+.app-toast-area {
+  margin-bottom: 16px;
+  max-width: 480px;
+}
+/* --- Login page layout --- */
+
+.login-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  padding: 0 16px; /* small horizontal padding on mobile */
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+}
+/* --- Calendar month view --- */
+
+.calendar-month {
+  background-color: var(--color-surface);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.calendar-month-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.calendar-month-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.calendar-month-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+}
+
+.calendar-month-weekday {
+  text-align: center;
+  padding: 2px 0;
+}
+
+.calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.calendar-month-cell {
+  min-height: 72px;
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  border: 1px solid var(--color-border);
+  background-color: #ffffff;
+  padding: 4px 6px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.calendar-month-cell-outside {
+  background-color: #f9fafb;
+  color: var(--color-muted);
+}
+
+.calendar-month-cell-today {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.calendar-month-cell-date {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.calendar-month-events {
+  margin-top: 2px;
+}
+
+.calendar-month-event {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-muted);
 }
