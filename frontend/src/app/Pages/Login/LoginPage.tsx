@@ -99,7 +99,7 @@ export const LoginPage = () => {
                 <span>Remember me</span>
               </label>
               <form action="/provide-email" method="get">
-                <button type="submit" className="text-primary hover:underline">
+                <button type="button" className="text-primary hover:underline" onClick ={() => navigate("/provideemail")}>
                   Forgot password?
                 </button>
               </form>

@@ -71,7 +71,7 @@ async def send_recover_password_email(user_data: UserEmailVerify, db: Session = 
     if not user.email_verified:
         raise HTTPException(status_code=403, detail="Email not verified")
     create_reset_token(db, user.email)
-    verify_link = (f"http://localhost:5173/reset-password"f"?email={user.email}&token={user.password_reset_token}")
+    verify_link = (f"http://localhost:5173/resetlogin"f"?email={user.email}&token={user.password_reset_token}")
     message = create_message([user.email], "Verify Email", verify_link)
     await mail.send_message(message)
     return {"message": "Email was sent"}

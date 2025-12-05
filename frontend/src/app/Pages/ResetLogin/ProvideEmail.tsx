@@ -23,7 +23,7 @@ export const ProvideEmail = () => {
     setMessage(null);
 
     try {
-      const response = await fetch("/users/send_recover_password_email", {
+      const response = await fetch("http://127.0.0.1:8000/users/send_recover_password_email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
