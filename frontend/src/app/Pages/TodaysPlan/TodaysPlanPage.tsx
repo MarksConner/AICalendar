@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TimelineRow } from "../../design_system/components/ui/TimelineRow";
 import {
@@ -10,57 +9,33 @@ import { Banner } from "../../design_system/components/ui/Banner";
 import { Button } from "../../design_system/components/ui/Button";
 import { Modal } from "../../design_system/components/ui/Modal";
 import { Input } from "../../design_system/components/ui/Input";
-
-type TodayEventStatus = "default" | "active" | "completed";
-
-interface TodayEvent {
-  id: string;
-  time: string; // HH:MM (for now)
-  title: string;
-  description?: string;
-  status: TodayEventStatus;
-}
-
-const initialEvents: TodayEvent[] = [
-  {
-    id: "101",
-    time: "09:00",
-    title: "Deep work – OS project",
-    description: "Finish memory management section.",
-    status: "completed",
-  },
-  {
-    id: "102",
-    time: "11:00",
-    title: "Team sync – AI Calendar",
-    description: "Review UI progress and next steps.",
-    status: "active",
-  },
-  {
-    id: "103",
-    time: "14:00",
-    title: "Study block – SVMs",
-    description: "Quiz prep and practice problems.",
-    status: "default",
-  },
-  {
-    id: "104",
-    time: "17:30",
-    title: "Gym + unwind",
-    description: "Strength training and cooldown.",
-    status: "default",
-  },
-];
+import { useState, useEffect } from "react";
+import type { DailyTimelineItem } from "../../Types/Calendar";
+import { fetchTodayTimeline } from "../../api/Today";
 
 export const TodaysPlanPage = () => {
   const navigate = useNavigate();
 
-  const [events, setEvents] = useState<TodayEvent[]>(initialEvents);
+  const [items, setItems] = useState<DailyTimelineItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newTime, setNewTime] = useState("");
   const [newDescription, setNewDescription] = useState("");
+
+  useEffect(() => {
+    fetchTodayTimeline()
+      .then((data) => {
+        setItems(data);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setError("Could not load today\u2019s plan.");
+        setIsLoading(false);
+      });
+  }, []);
 
   const handleOpenAdd = () => {
     setNewTitle("");
@@ -75,16 +50,16 @@ export const TodaysPlanPage = () => {
       return;
     }
 
-    const newEvent: TodayEvent = {
+    const newItem: DailyTimelineItem = {
       id: Date.now().toString(),
-      time: newTime,
+      startTime: newTime,
       title: newTitle,
       description: newDescription || undefined,
       status: "default",
     };
 
-    setEvents((prev) =>
-      [...prev, newEvent].sort((a, b) => a.time.localeCompare(b.time))
+    setItems((prev) =>
+      [...prev, newItem].sort((a, b) => a.startTime.localeCompare(b.startTime))
     );
     setIsAddOpen(false);
   };
@@ -117,27 +92,35 @@ export const TodaysPlanPage = () => {
           <h2 className="text-lg font-semibold">Timeline</h2>
         </CardHeader>
         <CardContent className="space-y-2">
-          {events.map((event, index) => (
-            <button
-              key={event.id}
-              type="button"
-              className="w-full text-left"
-              onClick={() => navigate(`/events/${event.id}`)}
-            >
-              <TimelineRow
-                time={event.time}
-                title={event.title}
-                description={event.description}
-                status={event.status}
-                className={index !== events.length - 1 ? "pb-2" : ""}
-              />
-            </button>
-          ))}
-          {events.length === 0 && (
+          {isLoading && (
+            <p className="text-sm text-muted">Loading today&apos;s plan…</p>
+          )}
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
+          {!isLoading && !error && items.length === 0 && (
             <p className="text-sm text-muted">
               No events yet. Use &quot;Add task&quot; to start planning your day.
             </p>
           )}
+          {!isLoading &&
+            !error &&
+            items.map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                className="w-full text-left"
+                onClick={() => navigate(`/events/${item.id}`)}
+              >
+                <TimelineRow
+                  time={item.startTime}
+                  title={item.title}
+                  description={item.description}
+                  status={item.status}
+                  className={index !== items.length - 1 ? "pb-2" : ""}
+                />
+              </button>
+            ))}
         </CardContent>
       </Card>
 
