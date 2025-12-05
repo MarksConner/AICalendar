@@ -35,8 +35,6 @@ class UserResponse(BaseModel):
 #Calendar pydantic operations
 class CalendarCreate(BaseModel):
     calendar_name: str
-    date_start: datetime 
-    date_end: datetime
 
 class CalendarRead(CalendarCreate):
     calendar_id: UUID

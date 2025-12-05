@@ -6,7 +6,7 @@ from .base import Base
 import uuid
 
 class Calendar(Base):
-    __tablename__ = "calendar"  # must match your Supabase table name
+    __tablename__ = "calendar"  # must match supabase table name
     calendar_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     calendar_name = Column(Text, nullable=False)
     date_start = Column(TIMESTAMP)

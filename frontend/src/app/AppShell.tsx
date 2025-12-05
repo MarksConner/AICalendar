@@ -4,6 +4,7 @@ import { SidePanel } from "./design_system/components/ui/SidePanel";
 import { Banner } from "./design_system/components/ui/Banner";
 import { Toast } from "./design_system/components/ui/Toast";
 import { ChatPage } from "./Pages/Chat/Chat";
+import { CreateCalendar } from "./Pages/CreateCalendar/CreateCalendar";
 
 import type React from "react";
 
@@ -20,6 +21,7 @@ export function AppShell() {
           <NavItem to="/">Dashboard</NavItem>
           <NavItem to="/today">Today&apos;s plan</NavItem>
           <NavItem to="/proposals">Proposals</NavItem>
+          <NavItem to="/createcalendar">Create Calendar</NavItem>
           <NavItem to="/chat">Chat</NavItem>
         </nav>
         

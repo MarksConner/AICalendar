@@ -7,6 +7,8 @@ import { ProposalsPage } from "./app/Pages/Proposals/ProposalsPage";
 import { AppShell } from "./app/AppShell";
 import { CreateUser } from "./app/Pages/CreateUser/CreateUser";
 import {ChatPage}  from "./app/Pages/Chat/Chat";
+import { CreateCalendar } from "./app/Pages/CreateCalendar/CreateCalendar";
+
 function App() {
   return (
     <Routes>
@@ -21,6 +23,7 @@ function App() {
         <Route path="/proposals" element={<ProposalsPage />} />
         <Route path="/createuser" element={<CreateUser />} />
         <Route path="/chat" element={<ChatPage />}/>
+        <Route path="/createcalendar" element={<CreateCalendar />} />
       </Route>
 
       {/* Fallback */}

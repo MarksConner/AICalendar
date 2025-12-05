@@ -126,7 +126,7 @@ def reset_password_token(db: Session, email:str, token: str, new_password: str) 
     db.refresh(user)
     return True 
 
-#Create access token. Data is a dict with email, user_id and a expiration date which is added.
+#Create access token. Data is a dict with email, user_id and a expiration date.
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=15)
@@ -136,16 +136,12 @@ def create_access_token(data: dict) -> str:
 
 def  login_credentials_user(db, email: str, password: str):
     user = get_user_by_email(db, email)
-
     if not user:
         return None
-    
     if not user.password  == password:
         return None
     dictionary: dict
     dictionary = {"email": user.email,"user_id": str(user.user_id)}
-    
-    token = create_access_token(dictionary)
-    
+    token = create_access_token(dictionary)   
     return {"access_token": token,"token_type": "bearer"}
 
