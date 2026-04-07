@@ -7,6 +7,7 @@ import type { CalendarView } from "../../contexts/calendarState";
 import {
   buildPositionedEvents,
   DEFAULT_DURATION_MINUTES,
+  extractTimeHHMM,
   getCurrentMinutes,
   HOUR_ROW_HEIGHT,
   HOURS_IN_DAY,
@@ -14,6 +15,7 @@ import {
   minutesToTimeString,
   parseTimeToMinutes,
   roundMinutesToStep,
+  toISODateTime,
 } from "./dayPlannerUtils";
 import type {
   EventInteractionState,
@@ -27,8 +29,8 @@ type UseDayPlannerArgs = {
   selectedView: CalendarView;
 };
 
-const sortItemsByStartTime = (items: DailyTimelineItem[]) =>
-  [...items].sort((a, b) => a.startTime.localeCompare(b.startTime));
+const sortItemsByStart = (items: DailyTimelineItem[]) =>
+  [...items].sort((a, b) => a.start.localeCompare(b.start));
 
 export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs) {
   const [items, setItems] = useState<DailyTimelineItem[]>([]);
@@ -44,11 +46,8 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   const [persistError, setPersistError] = useState<string | null>(null);
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
   const [isLoadingHints, setIsLoadingHints] = useState(false);
-  // Controls whether event detail dialog is visible.
   const [isEventDetailsOpen, setIsEventDetailsOpen] = useState(false);
-  // Stores the selected event id for the details dialog.
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  // Detail popup editing mode and form buffers.
   const [isEditingEvent, setIsEditingEvent] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editStartTime, setEditStartTime] = useState("");
@@ -66,7 +65,6 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   const [savingEventIds, setSavingEventIds] = useState<string[]>([]);
   const dayGridScrollRef = useRef<HTMLDivElement | null>(null);
   const eventTimeDraftsRef = useRef<Record<string, EventTimeDraft>>({});
-  // Avoid opening event details when the click is actually a drag/resize interaction.
   const suppressOpenRef = useRef(false);
   const selectedDateKeyRef = useRef(selectedDate.toDateString());
 
@@ -133,16 +131,12 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
           durationMinutes: DEFAULT_DURATION_MINUTES,
         })
         .then((hints) => {
-          if (cancelled) {
-            return;
-          }
+          if (cancelled) return;
           setSchedulingHints(hints);
           setIsLoadingHints(false);
         })
         .catch(() => {
-          if (cancelled) {
-            return;
-          }
+          if (cancelled) return;
           setHintError("Could not load availability hints.");
           setSchedulingHints(null);
           setIsLoadingHints(false);
@@ -155,20 +149,20 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     };
   }, [isAddOpen, newTime, selectedDate]);
 
+  // Apply in-progress drag/resize drafts (stored as HH:MM) to the item list for
+  // visual feedback, converting back to ISO datetimes before passing to the grid.
   const itemsWithDrafts = useMemo(
     () =>
       items.map((item) => {
         const draft = eventTimeDrafts[item.id];
-        if (!draft) {
-          return item;
-        }
+        if (!draft) return item;
         return {
           ...item,
-          startTime: draft.startTime,
-          endTime: draft.endTime,
+          start: toISODateTime(selectedDate, draft.start),
+          end: toISODateTime(selectedDate, draft.end),
         };
       }),
-    [items, eventTimeDrafts]
+    [items, eventTimeDrafts, selectedDate]
   );
 
   const positionedItems = useMemo(
@@ -176,7 +170,6 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     [itemsWithDrafts]
   );
 
-  // Keep a direct object reference for the selected event to render the dialog quickly.
   const selectedEvent = useMemo(
     () =>
       selectedEventId
@@ -195,28 +188,18 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   );
 
   useEffect(() => {
-    if (!isToday || selectedView !== "day") {
-      return;
-    }
-
+    if (!isToday || selectedView !== "day") return;
     setNowMinutes(getCurrentMinutes());
     const intervalId = window.setInterval(() => {
       setNowMinutes(getCurrentMinutes());
     }, 60 * 1000);
-
     return () => window.clearInterval(intervalId);
   }, [isToday, selectedView]);
 
   useEffect(() => {
-    if (!isToday || selectedView !== "day") {
-      return;
-    }
-
+    if (!isToday || selectedView !== "day") return;
     const container = dayGridScrollRef.current;
-    if (!container) {
-      return;
-    }
-
+    if (!container) return;
     const targetTop =
       (getCurrentMinutes() / 60) * HOUR_ROW_HEIGHT - container.clientHeight * 0.35;
     container.scrollTop = Math.max(0, targetTop);
@@ -224,28 +207,22 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
 
   const persistDayEventTimeChange = useCallback(
     async (eventId: string, draft: EventTimeDraft | undefined) => {
-      if (!draft) {
-        return;
-      }
+      if (!draft) return;
 
       const current = items.find((item) => item.id === eventId);
-      if (!current) {
-        return;
-      }
+      if (!current) return;
 
-      const unchanged =
-        current.startTime === draft.startTime &&
-        (current.endTime ?? "") === (draft.endTime ?? "");
-      if (unchanged) {
-        return;
-      }
+      const draftStartISO = toISODateTime(selectedDate, draft.start);
+      const draftEndISO = toISODateTime(selectedDate, draft.end);
+
+      if (current.start === draftStartISO && current.end === draftEndISO) return;
 
       const previousItems = items;
       const targetDate = new Date(selectedDate);
       const targetDateKey = targetDate.toDateString();
       const optimisticItems = previousItems.map((item) =>
         item.id === eventId
-          ? { ...item, startTime: draft.startTime, endTime: draft.endTime }
+          ? { ...item, start: draftStartISO, end: draftEndISO }
           : item
       );
 
@@ -257,12 +234,12 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
 
       try {
         await dataService.updateDayEvent(targetDate, eventId, {
-          startTime: draft.startTime,
-          endTime: draft.endTime,
+          start: draftStartISO,
+          end: draftEndISO,
         });
         const refreshed = await dataService.fetchDayTimeline(targetDate);
         if (selectedDateKeyRef.current === targetDateKey) {
-          setItems(sortItemsByStartTime(refreshed));
+          setItems(sortItemsByStart(refreshed));
         }
       } catch {
         if (selectedDateKeyRef.current === targetDateKey) {
@@ -282,14 +259,11 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       item: PositionedEvent,
       mode: InteractionMode
     ) => {
-      if (selectedView !== "day" || savingEventIds.includes(item.id)) {
-        return;
-      }
+      if (selectedView !== "day" || savingEventIds.includes(item.id)) return;
 
       event.preventDefault();
       event.stopPropagation();
       setPersistError(null);
-      // Prevent opening the modal from the same pointer gesture.
       suppressOpenRef.current = true;
 
       setInteractionState({
@@ -304,9 +278,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   );
 
   useEffect(() => {
-    if (!interactionState) {
-      return;
-    }
+    if (!interactionState) return;
 
     const handlePointerMove = (event: PointerEvent) => {
       const deltaMinutes = roundMinutesToStep(
@@ -332,23 +304,20 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       }
 
       const nextDraft: EventTimeDraft = {
-        startTime: minutesToTimeString(nextStart),
-        endTime: minutesToTimeString(nextEnd),
+        start: minutesToTimeString(nextStart),
+        end: minutesToTimeString(nextEnd),
       };
 
       setEventTimeDrafts((prev) => {
         const existing = prev[interactionState.eventId];
         if (
           existing &&
-          existing.startTime === nextDraft.startTime &&
-          existing.endTime === nextDraft.endTime
+          existing.start === nextDraft.start &&
+          existing.end === nextDraft.end
         ) {
           return prev;
         }
-        return {
-          ...prev,
-          [interactionState.eventId]: nextDraft,
-        };
+        return { ...prev, [interactionState.eventId]: nextDraft };
       });
     };
 
@@ -361,7 +330,6 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
         return next;
       });
       void persistDayEventTimeChange(interactionState.eventId, draft);
-      // Keep interaction suppression active briefly so click doesn't re-open details.
       window.setTimeout(() => {
         suppressOpenRef.current = false;
       }, 80);
@@ -389,26 +357,18 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     setIsAddOpen(true);
   };
 
-  const handleCloseAdd = () => {
-    setIsAddOpen(false);
-  };
+  const handleCloseAdd = () => setIsAddOpen(false);
 
   const handleOpenEventDetails = (eventId: string) => {
-    // Ignore if this was a drag/resize gesture ending on the same event.
-    if (suppressOpenRef.current) {
-      return;
-    }
+    if (suppressOpenRef.current) return;
 
     const eventToOpen = items.find((item) => item.id === eventId);
-    if (!eventToOpen) {
-      return;
-    }
+    if (!eventToOpen) return;
 
-    setEditTitle(eventToOpen.title);
-    setEditStartTime(eventToOpen.startTime);
-    setEditEndTime(eventToOpen.endTime ?? "");
+    setEditTitle(eventToOpen.name);
+    setEditStartTime(extractTimeHHMM(eventToOpen.start));
+    setEditEndTime(extractTimeHHMM(eventToOpen.end));
     setEditDescription(eventToOpen.description ?? "");
-    // Start in read-only mode with one form copy of values ready for edits.
     setIsEditingEvent(false);
     setEventEditError(null);
     setSelectedEventId(eventId);
@@ -417,45 +377,37 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
 
   const handleCloseEventDetails = () => {
     setIsEventDetailsOpen(false);
-    // Clear selected id so stale data doesn't linger.
     setIsEditingEvent(false);
     setEventEditError(null);
     setSelectedEventId(null);
   };
 
   const handleStartEventEdit = () => {
-    if (!selectedEvent) {
-      return;
-    }
-
-    setEditTitle(selectedEvent.title);
-    setEditStartTime(selectedEvent.startTime);
-    setEditEndTime(selectedEvent.endTime ?? "");
+    if (!selectedEvent) return;
+    setEditTitle(selectedEvent.name);
+    setEditStartTime(extractTimeHHMM(selectedEvent.start));
+    setEditEndTime(extractTimeHHMM(selectedEvent.end));
     setEditDescription(selectedEvent.description ?? "");
-    // Switch to editable state and keep the current values as the baseline.
     setEventEditError(null);
     setIsEditingEvent(true);
   };
 
   const handleCancelEventEdit = () => {
     if (selectedEvent) {
-      setEditTitle(selectedEvent.title);
-      setEditStartTime(selectedEvent.startTime);
-      setEditEndTime(selectedEvent.endTime ?? "");
+      setEditTitle(selectedEvent.name);
+      setEditStartTime(extractTimeHHMM(selectedEvent.start));
+      setEditEndTime(extractTimeHHMM(selectedEvent.end));
       setEditDescription(selectedEvent.description ?? "");
     }
-
     setEventEditError(null);
     setIsEditingEvent(false);
   };
 
   const handleSaveEventEdit = async () => {
-    if (!selectedEvent) {
-      return;
-    }
+    if (!selectedEvent) return;
 
-    const trimmedTitle = editTitle.trim();
-    if (!trimmedTitle) {
+    const trimmedName = editTitle.trim();
+    if (!trimmedName) {
       setEventEditError("Title is required.");
       return;
     }
@@ -466,10 +418,10 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       return;
     }
 
-    const normalizedStartTime = minutesToTimeString(startMinutes);
-    const endInput = editEndTime.trim();
-    let normalizedEndTime: string | undefined;
+    const normalizedStart = toISODateTime(selectedDate, minutesToTimeString(startMinutes));
 
+    const endInput = editEndTime.trim();
+    let normalizedEnd: string;
     if (endInput !== "") {
       const endMinutes = parseTimeToMinutes(endInput);
       if (endMinutes === null) {
@@ -480,15 +432,21 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
         setEventEditError("End time must be after start time.");
         return;
       }
-      normalizedEndTime = minutesToTimeString(endMinutes);
+      normalizedEnd = toISODateTime(selectedDate, minutesToTimeString(endMinutes));
+    } else {
+      // Default to start + 60 min when end is cleared
+      normalizedEnd = toISODateTime(
+        selectedDate,
+        minutesToTimeString(Math.min(startMinutes + DEFAULT_DURATION_MINUTES, HOURS_IN_DAY * 60 - 1))
+      );
     }
 
     const normalizedDescription = editDescription.trim() || undefined;
-    // Quick check so we don't call the API when nothing changed.
+
     const unchanged =
-      selectedEvent.title === trimmedTitle &&
-      selectedEvent.startTime === normalizedStartTime &&
-      (selectedEvent.endTime ?? "") === (normalizedEndTime ?? "") &&
+      selectedEvent.name === trimmedName &&
+      selectedEvent.start === normalizedStart &&
+      selectedEvent.end === normalizedEnd &&
       (selectedEvent.description ?? "") === (normalizedDescription ?? "");
 
     if (unchanged) {
@@ -503,15 +461,15 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       item.id === selectedEvent.id
         ? {
             ...item,
-            title: trimmedTitle,
-            startTime: normalizedStartTime,
-            endTime: normalizedEndTime,
+            name: trimmedName,
+            start: normalizedStart,
+            end: normalizedEnd,
             description: normalizedDescription,
           }
         : item
     );
 
-    setItems(sortItemsByStartTime(optimisticItems));
+    setItems(sortItemsByStart(optimisticItems));
     setPersistError(null);
     setEventEditError(null);
     setSavingEventIds((prev) =>
@@ -520,14 +478,14 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
 
     try {
       await dataService.updateDayEvent(targetDate, selectedEvent.id, {
-        title: trimmedTitle,
-        startTime: normalizedStartTime,
-        endTime: normalizedEndTime,
+        name: trimmedName,
+        start: normalizedStart,
+        end: normalizedEnd,
         description: normalizedDescription,
       });
       const refreshed = await dataService.fetchDayTimeline(targetDate);
       if (selectedDateKeyRef.current === targetDateKey) {
-        setItems(sortItemsByStartTime(refreshed));
+        setItems(sortItemsByStart(refreshed));
       }
       setIsEditingEvent(false);
     } catch {
@@ -544,17 +502,12 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   };
 
   const handleDeleteEvent = async () => {
-    if (!selectedEvent) {
-      return;
-    }
+    if (!selectedEvent) return;
 
     const confirmDelete = window.confirm("Delete this event?");
-    if (!confirmDelete) {
-      return;
-    }
+    if (!confirmDelete) return;
 
     const previousItems = items;
-    // Optimistic delete: remove from grid immediately, then rollback if API fails.
     const targetDate = new Date(selectedDate);
     const targetDateKey = targetDate.toDateString();
 
@@ -569,7 +522,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       await dataService.deleteDayEvent(targetDate, selectedEvent.id);
       const refreshed = await dataService.fetchDayTimeline(targetDate);
       if (selectedDateKeyRef.current === targetDateKey) {
-        setItems(sortItemsByStartTime(refreshed));
+        setItems(sortItemsByStart(refreshed));
       }
     } catch {
       if (selectedDateKeyRef.current === targetDateKey) {
@@ -580,10 +533,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   };
 
   useEffect(() => {
-    // If the selected event was removed while details were open, close the popup.
-    if (!selectedEventId || selectedEvent) {
-      return;
-    }
+    if (!selectedEventId || selectedEvent) return;
     setIsEventDetailsOpen(false);
     setIsEditingEvent(false);
     setEventEditError(null);
@@ -601,19 +551,23 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       return;
     }
 
-    const normalizedStart = minutesToTimeString(startMinutes);
-    const endMinutes = startMinutes + 60;
-    const normalizedEnd =
-      endMinutes < HOURS_IN_DAY * 60 ? minutesToTimeString(endMinutes) : undefined;
+    const normalizedStart = toISODateTime(
+      selectedDate,
+      minutesToTimeString(startMinutes)
+    );
+    const endMinutes = Math.min(startMinutes + DEFAULT_DURATION_MINUTES, HOURS_IN_DAY * 60 - 1);
+    const normalizedEnd = toISODateTime(selectedDate, minutesToTimeString(endMinutes));
 
     const tempId = `temp-${Date.now()}`;
     const tempItem: DailyTimelineItem = {
       id: tempId,
-      startTime: normalizedStart,
-      endTime: normalizedEnd,
-      title: newTitle.trim(),
+      name: newTitle.trim(),
+      start: normalizedStart,
+      end: normalizedEnd,
       description: newDescription.trim() || undefined,
-      status: "default",
+      priority: 0,
+      flexible: false,
+      travel_time_min: 0,
     };
 
     const targetDate = new Date(selectedDate);
@@ -621,20 +575,22 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     setIsCreatingEvent(true);
     setAddTaskError(null);
     setPersistError(null);
-    setItems((prev) => sortItemsByStartTime([...prev, tempItem]));
+    setItems((prev) => sortItemsByStart([...prev, tempItem]));
     setIsAddOpen(false);
 
     try {
       await dataService.createDayEvent(targetDate, {
-        title: tempItem.title,
-        startTime: tempItem.startTime,
-        endTime: tempItem.endTime,
+        name: tempItem.name,
+        start: tempItem.start,
+        end: tempItem.end,
         description: tempItem.description,
-        status: tempItem.status,
+        priority: tempItem.priority,
+        flexible: tempItem.flexible,
+        travel_time_min: tempItem.travel_time_min,
       });
       const refreshed = await dataService.fetchDayTimeline(targetDate);
       if (selectedDateKeyRef.current === targetDateKey) {
-        setItems(sortItemsByStartTime(refreshed));
+        setItems(sortItemsByStart(refreshed));
       }
     } catch {
       if (selectedDateKeyRef.current === targetDateKey) {

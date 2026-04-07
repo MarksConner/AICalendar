@@ -1,20 +1,91 @@
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { useCallback } from "react";
 import { Banner } from "../../design_system/components/ui/Banner";
 import { Button } from "../../design_system/components/ui/Button";
 import { useCalendar } from "../../contexts/useCalendar";
+import type { CalendarView } from "../../contexts/calendarState";
 import { AddTaskModal } from "./AddTaskModal";
+import { AiSuggestionsPanel } from "./AiSuggestionsPanel";
 import { DayGrid } from "./DayGrid";
 import { EventDetailsDialog } from "./EventDetailsDialog";
+import { MonthView } from "./MonthView";
+import { WeekGrid } from "./WeekGrid";
 import { useDayPlanner } from "./useDayPlanner";
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+const getWeekStart = (date: Date): Date => {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+};
+
+const addDays = (date: Date, n: number): Date => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+};
+
+const getPageTitle = (
+  view: CalendarView,
+  date: Date,
+  isToday: boolean,
+  dateLabel: string
+): string => {
+  if (view === "day") return isToday ? "Today" : dateLabel;
+  if (view === "week") {
+    const wStart = getWeekStart(date);
+    const wEnd = addDays(wStart, 6);
+    const start = wStart.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const end = wEnd.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    return `${start} – ${end}`;
+  }
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+};
+
+const getPageSubtitle = (view: CalendarView, isToday: boolean, dateLabel: string): string => {
+  if (view === "day") {
+    return isToday
+      ? "A timeline of your day with AI-powered insights."
+      : `Events scheduled for ${dateLabel}.`;
+  }
+  if (view === "week") return "Click any day column header to open it in day view.";
+  return "Click a day to open it in day view.";
+};
+
+// ── component ─────────────────────────────────────────────────────────────────
+
 export const TodaysPlanPage = () => {
-  const { selectedDate, selectedView, setSelectedView } = useCalendar();
+  const { selectedDate, selectedView, navigateToDay } = useCalendar();
   const planner = useDayPlanner({ selectedDate, selectedView });
 
+  const handleNavigateToDay = useCallback(
+    (date: Date) => {
+      navigateToDay(date);
+    },
+    [navigateToDay]
+  );
+
+  const pageTitle = getPageTitle(
+    selectedView,
+    selectedDate,
+    planner.isToday,
+    planner.dateLabel
+  );
+  const pageSubtitle = getPageSubtitle(selectedView, planner.isToday, planner.dateLabel);
+
   return (
-    <Stack spacing={2} sx={{ maxWidth: 672 }}>
+    <Stack
+      spacing={2}
+      sx={{ maxWidth: selectedView === "month" ? 900 : "100%" }}
+    >
+      {/* Page header */}
       <Box
         sx={{
           display: "flex",
@@ -26,12 +97,10 @@ export const TodaysPlanPage = () => {
       >
         <Box>
           <Typography variant="h5" fontWeight={600}>
-            {planner.isToday ? "Today" : planner.dateLabel}
+            {pageTitle}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {planner.isToday
-              ? "A timeline of your day with AI-powered insights."
-              : `Events scheduled for ${planner.dateLabel}.`}
+            {pageSubtitle}
           </Typography>
         </Box>
         <Button
@@ -43,12 +112,6 @@ export const TodaysPlanPage = () => {
         </Button>
       </Box>
 
-      <Banner
-        variant="info"
-        title="AI suggestion"
-        message="If you leave by 10:35 AM, you’ll arrive on time for your team sync, accounting for traffic and buffer time."
-      />
-
       {planner.persistError && (
         <Banner
           variant="error"
@@ -57,24 +120,46 @@ export const TodaysPlanPage = () => {
         />
       )}
 
-      <DayGrid
-        dayGridScrollRef={planner.dayGridScrollRef}
-        error={planner.error}
-        hours={planner.hours}
-        interactionState={planner.interactionState}
-        isLoading={planner.isLoading}
-        isToday={planner.isToday}
-        itemsCount={planner.items.length}
-        nowMinutes={planner.nowMinutes}
-        onOpenEvent={planner.handleOpenEventDetails}
-        onStartInteraction={planner.startEventInteraction}
-        positionedItems={planner.positionedItems}
-        savingEventIds={planner.savingEventIds}
-        selectedView={selectedView}
-        setSelectedView={setSelectedView}
-      />
+      {/* Day view — grid + AI suggestions side by side */}
+      {selectedView === "day" && (
+        <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+          <Box sx={{ flex: 1, minWidth: 0, maxWidth: 672 }}>
+            <DayGrid
+              dayGridScrollRef={planner.dayGridScrollRef}
+              error={planner.error}
+              hours={planner.hours}
+              interactionState={planner.interactionState}
+              isLoading={planner.isLoading}
+              isToday={planner.isToday}
+              itemsCount={planner.items.length}
+              nowMinutes={planner.nowMinutes}
+              onOpenEvent={planner.handleOpenEventDetails}
+              onStartInteraction={planner.startEventInteraction}
+              positionedItems={planner.positionedItems}
+              savingEventIds={planner.savingEventIds}
+            />
+          </Box>
+          <AiSuggestionsPanel date={selectedDate} items={planner.items} />
+        </Box>
+      )}
 
-      {/* Popup detail view for selected day events. */}
+      {/* Week view */}
+      {selectedView === "week" && (
+        <WeekGrid
+          selectedDate={selectedDate}
+          onNavigateToDay={handleNavigateToDay}
+        />
+      )}
+
+      {/* Month view */}
+      {selectedView === "month" && (
+        <MonthView
+          selectedDate={selectedDate}
+          onDayClick={handleNavigateToDay}
+        />
+      )}
+
+      {/* Event detail + add-task modals (available in all views) */}
       <EventDetailsDialog
         isOpen={planner.isEventDetailsOpen}
         event={planner.selectedEvent}

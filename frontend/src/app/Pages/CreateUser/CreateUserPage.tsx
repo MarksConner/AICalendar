@@ -18,6 +18,7 @@ export const CreateUserPage = () => {
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -28,7 +29,7 @@ export const CreateUserPage = () => {
     event.preventDefault();
     setError(null);
 
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !username || !email || !password || !confirmPassword) {
       setError("Please fill out all fields.");
       return;
     }
@@ -41,8 +42,9 @@ export const CreateUserPage = () => {
     setIsSubmitting(true);
     try {
       const result = await dataService.createUser({
-        firstName,
-        lastName,
+        first_name: firstName,
+        last_name: lastName,
+        username,
         email,
         password,
       });
@@ -110,6 +112,13 @@ export const CreateUserPage = () => {
                 autoComplete="family-name"
                 value={lastName}
                 onChange={(event) => setLastName(event.target.value)}
+              />
+              <Input
+                label="Username"
+                placeholder="janedoe"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
               />
               <Input
                 label="Email"

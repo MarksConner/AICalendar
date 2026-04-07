@@ -1,10 +1,7 @@
 import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { MutableRefObject } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { CalendarView } from "../../contexts/calendarState";
-import { Button } from "../../design_system/components/ui/Button";
 import {
   Card,
   CardContent,
@@ -40,8 +37,6 @@ type DayGridProps = {
   ) => void;
   positionedItems: PositionedEvent[];
   savingEventIds: string[];
-  selectedView: CalendarView;
-  setSelectedView: (view: CalendarView) => void;
 };
 
 export function DayGrid({
@@ -57,36 +52,7 @@ export function DayGrid({
   onStartInteraction,
   positionedItems,
   savingEventIds,
-  selectedView,
-  setSelectedView,
 }: DayGridProps) {
-  if (selectedView !== "day") {
-    return (
-      <Card variant="elevated">
-        <CardContent>
-          <Stack spacing={1.5}>
-            <Typography variant="h6" fontWeight={600}>
-              {selectedView === "week" ? "Week view" : "Month view"} is next
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Day view is fully interactive now. Week and month editing are coming
-              next.
-            </Typography>
-            <Box>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setSelectedView("day")}
-              >
-                Return to day view
-              </Button>
-            </Box>
-          </Stack>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card>
       <CardHeader>

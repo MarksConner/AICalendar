@@ -1,27 +1,25 @@
+/**
+ * MOCK ONLY — do not import this file outside of mockDataService.ts.
+ *
+ * Contains mock implementations of auth operations (login, createUser).
+ * The real implementations live in httpDataService.ts and call the FastAPI backend.
+ */
+import type { User } from "../Types/User";
+
 export interface LoginResponse {
   token: string;
-  user: {
-    id: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    name?: string;
-  };
+  user: User;
 }
 
 export interface CreateUserResponse {
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-  };
+  user: User;
   token?: string;
 }
+
 /**
- * Log in API call is handled here, mock data for now. 
+ * Log in API call is handled here, mock data for now.
  * Password is just password123
- * Please insert actual api call for backend here. 
+ * Please insert actual api call for backend here.
  */
 export async function login(
   email: string,
@@ -41,13 +39,15 @@ export async function login(
   return {
     token: "mock-jwt-token-123",
     user: {
-      id: "user-1",
+      user_id: "user-1",
       email,
-      firstName: "Demo",
-      lastName: "User",
+      username: email.split("@")[0],
+      first_name: "Demo",
+      last_name: "User",
+      email_verified: false,
     },
   };
-    /*
+  /*
   // Real version should look like something like this:
   const res = await fetch("/api/login", {
     method: "POST",
@@ -69,23 +69,26 @@ export async function login(
 
 export async function createUser(
   email: string,
-  firstName: string,
-  lastName: string,
+  username: string,
+  first_name: string,
+  last_name: string,
   password: string
 ): Promise<CreateUserResponse> {
   // Simulate backend latency for now so UI can exercise loading/error states.
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  if (!email || !firstName || !lastName || !password) {
+  if (!email || !username || !first_name || !last_name || !password) {
     throw new Error("All user fields are required.");
   }
 
   return {
     user: {
-      id: `user-${Date.now()}`,
+      user_id: `user-${Date.now()}`,
       email,
-      firstName,
-      lastName,
+      username,
+      first_name,
+      last_name,
+      email_verified: false,
     },
   };
 }

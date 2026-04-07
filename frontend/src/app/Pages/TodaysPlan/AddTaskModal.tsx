@@ -125,9 +125,8 @@ export function AddTaskModal({
                     variant="caption"
                     color="text.secondary"
                   >
-                    {conflict.startTime}
-                    {conflict.endTime ? ` - ${conflict.endTime}` : ""} ·{" "}
-                    {conflict.title}
+                    {conflict.start}
+                    {conflict.end ? ` – ${conflict.end}` : ""} · {conflict.name}
                   </Typography>
                 ))}
               </Box>

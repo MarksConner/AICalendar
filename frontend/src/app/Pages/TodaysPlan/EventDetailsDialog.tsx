@@ -6,6 +6,7 @@ import { Badge } from "../../design_system/components/ui/Badge";
 import { Button } from "../../design_system/components/ui/Button";
 import { Modal } from "../../design_system/components/ui/Modal";
 import { Input } from "../../design_system/components/ui/Input";
+import { extractTimeHHMM } from "./dayPlannerUtils";
 
 type EventDetailsDialogProps = {
   // Selected event to show in the popup; null means unavailable.
@@ -31,12 +32,18 @@ type EventDetailsDialogProps = {
   onSetEditTitle: (value: string) => void;
 };
 
-const formatStatusLabel = (status: DailyTimelineItem["status"]) => {
-  if (!status) {
-    return "Default";
-  }
+const formatPriorityLabel = (priority: number): string => {
+  if (priority >= 2) return "High priority";
+  if (priority === 1) return "Medium priority";
+  return "Normal";
+};
 
-  return `${status[0].toUpperCase()}${status.slice(1)}`;
+const priorityBadgeVariant = (
+  priority: number
+): "default" | "warning" | "error" => {
+  if (priority >= 2) return "error";
+  if (priority === 1) return "warning";
+  return "default";
 };
 
 export const EventDetailsDialog = ({
@@ -136,14 +143,28 @@ export const EventDetailsDialog = ({
           ) : (
             <>
               <Typography variant="h6" fontWeight={600}>
-                {event.title}
+                {event.name}
               </Typography>
-              <Badge variant="info">{formatStatusLabel(event.status)}</Badge>
+              <Badge variant={priorityBadgeVariant(event.priority)}>
+                {formatPriorityLabel(event.priority)}
+              </Badge>
               <Box>
                 <Typography variant="body2" color="text.secondary">
-                  {event.startTime}
-                  {event.endTime ? ` - ${event.endTime}` : ""}
+                  {extractTimeHHMM(event.start)} – {extractTimeHHMM(event.end)}
                 </Typography>
+                {event.location && (
+                  <Typography variant="body2" color="text.secondary">
+                    {event.location}
+                    {event.travel_time_min > 0
+                      ? ` · ${event.travel_time_min} min travel`
+                      : ""}
+                  </Typography>
+                )}
+                {event.flexible && (
+                  <Typography variant="caption" color="text.secondary">
+                    Flexible
+                  </Typography>
+                )}
               </Box>
               <Typography
                 variant="body2"

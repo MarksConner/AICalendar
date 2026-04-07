@@ -13,7 +13,6 @@ import Typography from "@mui/material/Typography";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "./design_system/components/ui/Button";
 import { SidePanel } from "./design_system/components/ui/SidePanel";
-import { Toast } from "./design_system/components/ui/Toast";
 import { CalendarSidebar } from "./components/CalendarSidebar";
 import { CalendarProvider } from "./contexts/CalendarContext";
 import type { CalendarView } from "./contexts/calendarState";
@@ -156,16 +155,18 @@ export function AppShell() {
 
   const updateCalendarParams = useCallback(
     (updates: { date?: Date; view?: CalendarView }) => {
-      const nextParams = new URLSearchParams(searchParams);
-      if (updates.date) {
-        nextParams.set("date", toDateParam(updates.date));
-      }
-      if (updates.view) {
-        nextParams.set("view", updates.view);
-      }
-      setSearchParams(nextParams);
+      setSearchParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (updates.date) {
+          nextParams.set("date", toDateParam(updates.date));
+        }
+        if (updates.view) {
+          nextParams.set("view", updates.view);
+        }
+        return nextParams;
+      });
     },
-    [searchParams, setSearchParams]
+    [setSearchParams]
   );
 
   const setSelectedDate = useCallback(
@@ -178,6 +179,13 @@ export function AppShell() {
   const setSelectedView = useCallback(
     (view: CalendarView) => {
       updateCalendarParams({ view });
+    },
+    [updateCalendarParams]
+  );
+
+  const navigateToDay = useCallback(
+    (date: Date) => {
+      updateCalendarParams({ date, view: "day" });
     },
     [updateCalendarParams]
   );
@@ -196,8 +204,8 @@ export function AppShell() {
     setSelectedDate(shiftDateByView(selectedDate, selectedView, 1));
 
   const calendarContextValue = useMemo(
-    () => ({ selectedDate, setSelectedDate, selectedView, setSelectedView }),
-    [selectedDate, setSelectedDate, selectedView, setSelectedView]
+    () => ({ selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay }),
+    [selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay]
   );
 
   return (
@@ -336,13 +344,6 @@ export function AppShell() {
         <Box sx={{ display: "flex", flex: 1, minHeight: 0, bgcolor: "background.default" }}>
           <CalendarSidebar />
           <Box component="main" sx={{ flex: 1, minWidth: 0, p: 2, overflowY: "auto" }}>
-            <Box sx={{ mb: 2, maxWidth: 480 }}>
-              <Toast
-                variant="info"
-                title="Tip"
-                description="Use Today’s plan to see a detailed timeline for your day."
-              />
-            </Box>
             <Outlet />
           </Box>
         </Box>

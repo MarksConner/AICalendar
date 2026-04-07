@@ -3,6 +3,7 @@ import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import {
+  extractTimeHHMM,
   getEventTone,
   HOUR_ROW_HEIGHT,
   MIN_EVENT_HEIGHT,
@@ -33,7 +34,7 @@ export function EventBlock({
   const height = Math.max((duration / 60) * HOUR_ROW_HEIGHT - 4, MIN_EVENT_HEIGHT);
   const widthPercent = 100 / item.columnCount;
   const leftPercent = widthPercent * item.column;
-  const tone = getEventTone(item.status);
+  const tone = getEventTone(item.priority);
 
   return (
     <ButtonBase
@@ -73,8 +74,7 @@ export function EventBlock({
           }}
         >
           <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            {item.startTime}
-            {item.endTime ? ` - ${item.endTime}` : ""}
+            {extractTimeHHMM(item.start)} – {extractTimeHHMM(item.end)}
           </Typography>
           <Box
             role="button"
@@ -103,7 +103,7 @@ export function EventBlock({
             whiteSpace: "nowrap",
           }}
         >
-          {item.title}
+          {item.name}
         </Typography>
         {item.description && (
           <Typography

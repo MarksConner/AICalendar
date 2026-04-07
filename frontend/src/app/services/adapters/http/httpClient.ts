@@ -1,3 +1,14 @@
+/**
+ * Low-level HTTP wrapper. Most developers won't need to touch this file.
+ *
+ * Handles automatically:
+ *   - Base URL (set VITE_API_BASE_URL in .env.local, e.g. http://localhost:8000)
+ *   - Auth token injection (reads from localStorage after login)
+ *   - JSON serialization/deserialization
+ *   - Error message extraction from the response body
+ *
+ * Use requestJson() in httpDataService.ts to make API calls.
+ */
 type QueryValue = string | number | boolean | null | undefined;
 
 type RequestJsonOptions = Omit<RequestInit, "body"> & {

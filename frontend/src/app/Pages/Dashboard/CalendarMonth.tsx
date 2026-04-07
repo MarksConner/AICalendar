@@ -1,20 +1,17 @@
 import Box from "@mui/material/Box";
+import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";
 import type { SxProps, Theme } from "@mui/material/styles";
-
-export interface CalendarEvent {
-  id: string;
-  date: string; // "YYYY-MM-DD"
-  title: string;
-}
+import type { CalendarEvent } from "../../Types/Calendar";
 
 interface CalendarMonthProps {
   year: number;
   month: number; // 0 = Jan, 11 = Dec
   events?: CalendarEvent[];
+  onDayClick?: (date: Date) => void;
 }
 
-export function CalendarMonth({ year, month, events = [] }: CalendarMonthProps) {
+export function CalendarMonth({ year, month, events = [], onDayClick }: CalendarMonthProps) {
   const today = new Date();
   const isTodayMonth =
     today.getFullYear() === year && today.getMonth() === month;
@@ -39,7 +36,7 @@ export function CalendarMonth({ year, month, events = [] }: CalendarMonthProps) 
     const dayEvents =
       dateKey === null
         ? []
-        : events.filter((evt) => evt.date === dateKey).slice(0, 3);
+        : events.filter((evt) => evt.start.startsWith(dateKey)).slice(0, 3);
 
     const isToday =
       inCurrentMonth &&
@@ -129,31 +126,56 @@ export function CalendarMonth({ year, month, events = [] }: CalendarMonthProps) 
             : {};
           const mergedSx = [cellSx, outsideSx, todaySx];
 
+          const cellContent = cell.dayNumber !== null ? (
+            <>
+              <Box sx={{ fontWeight: 600, mb: 0.25 }}>
+                {cell.dayNumber}
+              </Box>
+              <Box sx={{ mt: 0.25 }}>
+                {cell.events.map((evt) => (
+                  <Box
+                    key={evt.id}
+                    sx={{
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      color: "text.secondary",
+                    }}
+                    title={evt.name}
+                  >
+                    • {evt.name}
+                  </Box>
+                ))}
+              </Box>
+            </>
+          ) : null;
+
+          if (onDayClick && cell.inCurrentMonth && cell.dayNumber !== null) {
+            const clickDate = new Date(year, month, cell.dayNumber);
+            return (
+              <ButtonBase
+                key={cell.index}
+                onClick={() => onDayClick(clickDate)}
+                sx={[
+                  ...mergedSx,
+                  {
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    "&:hover": { bgcolor: "action.hover" },
+                  },
+                ]}
+              >
+                {cellContent}
+              </ButtonBase>
+            );
+          }
+
           return (
             <Box key={cell.index} sx={mergedSx}>
-              {cell.dayNumber !== null && (
-                <>
-                  <Box sx={{ fontWeight: 600, mb: 0.25 }}>
-                    {cell.dayNumber}
-                  </Box>
-                  <Box sx={{ mt: 0.25 }}>
-                    {cell.events.map((evt) => (
-                      <Box
-                        key={evt.id}
-                        sx={{
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          color: "text.secondary",
-                        }}
-                        title={evt.title}
-                      >
-                        • {evt.title}
-                      </Box>
-                    ))}
-                  </Box>
-                </>
-              )}
+              {cellContent}
             </Box>
           );
         })}

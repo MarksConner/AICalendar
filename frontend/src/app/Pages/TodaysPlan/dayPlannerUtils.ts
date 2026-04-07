@@ -15,9 +15,10 @@ export type PositionedEvent = DailyTimelineItem & {
   columnCount: number;
 };
 
+/** Internal drag/resize draft — stores times as HH:MM for visual feedback. */
 export type EventTimeDraft = {
-  startTime: string;
-  endTime?: string;
+  start: string; // HH:MM
+  end: string;   // HH:MM
 };
 
 export type InteractionMode = "move" | "resize";
@@ -30,16 +31,35 @@ export type EventInteractionState = {
   initialEndMinutes: number;
 };
 
-export const parseTimeToMinutes = (value: string): number | null => {
-  const trimmed = value.trim();
-  const match = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
-  if (!match) {
-    return null;
-  }
+/**
+ * Extract HH:MM from either an ISO datetime ("2026-03-27T09:30:00") or a
+ * bare HH:MM string ("09:30"). Returns the HH:MM portion in both cases.
+ */
+export const extractTimeHHMM = (value: string): string => {
+  const isoMatch = value.match(/T(\d{2}:\d{2})/);
+  return isoMatch ? isoMatch[1] : value.trim();
+};
 
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  return hours * 60 + minutes;
+/**
+ * Combine a Date and an HH:MM string into a local ISO datetime string.
+ * e.g. toISODateTime(new Date("2026-03-27"), "09:30") → "2026-03-27T09:30:00"
+ */
+export const toISODateTime = (date: Date, timeHHMM: string): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}T${timeHHMM}:00`;
+};
+
+/**
+ * Parse either an ISO datetime or a bare HH:MM string to total minutes from
+ * midnight. Returns null if the format is unrecognised.
+ */
+export const parseTimeToMinutes = (value: string): number | null => {
+  const hhmm = extractTimeHHMM(value);
+  const match = hhmm.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
 };
 
 export const minutesToTimeString = (value: number) => {
@@ -62,23 +82,15 @@ export const getCurrentMinutes = () => {
   return now.getHours() * 60 + now.getMinutes();
 };
 
-export const getEventTone = (status: DailyTimelineItem["status"]) => {
-  if (status === "active") {
-    return {
-      bgcolor: "primary.light",
-      borderColor: "primary.main",
-    };
+/** Map a numeric priority to event block colours. */
+export const getEventTone = (priority: number) => {
+  if (priority === 1) {
+    return { bgcolor: "primary.light", borderColor: "primary.main" };
   }
-  if (status === "completed") {
-    return {
-      bgcolor: "success.light",
-      borderColor: "success.main",
-    };
+  if (priority >= 2) {
+    return { bgcolor: "success.light", borderColor: "success.main" };
   }
-  return {
-    bgcolor: "action.selected",
-    borderColor: "divider",
-  };
+  return { bgcolor: "action.selected", borderColor: "divider" };
 };
 
 export const buildPositionedEvents = (
@@ -86,35 +98,25 @@ export const buildPositionedEvents = (
 ): PositionedEvent[] => {
   const normalized = items
     .map((item) => {
-      const startMinutes = parseTimeToMinutes(item.startTime);
-      if (startMinutes === null) {
-        return null;
-      }
+      const startMinutes = parseTimeToMinutes(item.start);
+      if (startMinutes === null) return null;
 
-      const parsedEnd = item.endTime ? parseTimeToMinutes(item.endTime) : null;
+      const parsedEnd = parseTimeToMinutes(item.end);
       const computedEnd =
         parsedEnd !== null && parsedEnd > startMinutes
           ? parsedEnd
           : Math.min(startMinutes + 60, HOURS_IN_DAY * 60);
 
-      if (computedEnd <= startMinutes) {
-        return null;
-      }
+      if (computedEnd <= startMinutes) return null;
 
-      return {
-        ...item,
-        startMinutes,
-        endMinutes: computedEnd,
-      };
+      return { ...item, startMinutes, endMinutes: computedEnd };
     })
     .filter(
       (item): item is Omit<PositionedEvent, "column" | "columnCount"> =>
         item !== null
     )
     .sort((a, b) => {
-      if (a.startMinutes === b.startMinutes) {
-        return a.endMinutes - b.endMinutes;
-      }
+      if (a.startMinutes === b.startMinutes) return a.endMinutes - b.endMinutes;
       return a.startMinutes - b.startMinutes;
     });
 
@@ -140,23 +142,14 @@ export const buildPositionedEvents = (
       let column = columnEndMinutes.findIndex(
         (endMinutes) => endMinutes <= item.startMinutes
       );
-      if (column === -1) {
-        column = columnEndMinutes.length;
-      }
+      if (column === -1) column = columnEndMinutes.length;
       columnEndMinutes[column] = item.endMinutes;
-
-      return {
-        ...item,
-        column,
-      };
+      return { ...item, column };
     });
 
     const columnCount = Math.max(1, columnEndMinutes.length);
     groupWithColumns.forEach((item) => {
-      positioned.push({
-        ...item,
-        columnCount,
-      });
+      positioned.push({ ...item, columnCount });
     });
 
     cursor = groupStop;

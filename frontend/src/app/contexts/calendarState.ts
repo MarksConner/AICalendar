@@ -7,6 +7,7 @@ export type CalendarContextValue = {
   setSelectedDate: (date: Date) => void;
   selectedView: CalendarView;
   setSelectedView: (view: CalendarView) => void;
+  navigateToDay: (date: Date) => void;
 };
 
 export const CalendarContext = createContext<CalendarContextValue | null>(null);

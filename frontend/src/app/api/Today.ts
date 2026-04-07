@@ -1,3 +1,10 @@
+/**
+ * MOCK ONLY — do not import this file outside of mockDataService.ts.
+ *
+ * Contains mock implementations of all day/timeline operations.
+ * The real implementations live in httpDataService.ts and call the FastAPI backend.
+ * Mock data is persisted to localStorage under the key defined by STORAGE_KEY below.
+ */
 import type { DailyTimelineItem } from "../Types/Calendar";
 import type {
   DayAvailabilitySuggestion,
@@ -6,33 +13,37 @@ import type {
   DaySchedulingHintsRequest,
 } from "../services/contracts";
 
-const MOCK_TODAY_ITEMS: DailyTimelineItem[] = [
+// Mock seed items — the date portion is replaced dynamically per requested day.
+const MOCK_SEED_ITEMS: Omit<DailyTimelineItem, "id">[] = [
   {
-    id: "t1",
-    startTime: "09:00",
-    endTime: "10:00",
-    title: "Deep work – OS project",
+    name: "Deep work – OS project",
+    start: "PLACEHOLDER_DATE T09:00:00",
+    end: "PLACEHOLDER_DATE T10:00:00",
     description: "Finish memory management section.",
-    status: "completed",
+    priority: 2,
+    flexible: false,
+    travel_time_min: 0,
   },
   {
-    id: "t2",
-    startTime: "11:00",
-    endTime: "12:00",
-    title: "Team sync – AI Calendar",
+    name: "Team sync – AI Calendar",
+    start: "PLACEHOLDER_DATE T11:00:00",
+    end: "PLACEHOLDER_DATE T12:00:00",
     description: "Review UI progress and next steps.",
-    status: "active",
+    priority: 1,
+    flexible: false,
+    travel_time_min: 0,
   },
   {
-    id: "t3",
-    startTime: "14:00",
-    endTime: "15:00",
-    title: "Study block – SVMs",
-    status: "default",
+    name: "Study block – SVMs",
+    start: "PLACEHOLDER_DATE T14:00:00",
+    end: "PLACEHOLDER_DATE T15:00:00",
+    priority: 0,
+    flexible: true,
+    travel_time_min: 0,
   },
 ];
 
-const STORAGE_KEY = "aicalendar.mock.dayTimeline.v1";
+const STORAGE_KEY = "aicalendar.mock.dayTimeline.v2";
 const NETWORK_DELAY_MS = 250;
 
 type TimelineStore = Record<string, DailyTimelineItem[]>;
@@ -58,22 +69,23 @@ const toDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+/** Extract HH:MM from an ISO datetime or a bare HH:MM string. */
+const extractHHMM = (value: string): string => {
+  const iso = value.match(/T(\d{2}:\d{2})/);
+  return iso ? iso[1] : value.trim();
+};
+
+/** Parse HH:MM (or ISO datetime) to total minutes from midnight. */
 const parseTimeToMinutes = (value: string): number | null => {
-  const trimmed = value.trim();
-  const match = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
-  if (!match) {
-    return null;
-  }
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  return hours * 60 + minutes;
+  const hhmm = extractHHMM(value);
+  const match = hhmm.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
 };
 
 const minutesToTimeString = (value: number) => {
-  const safeMinutes = Math.max(0, Math.min(DAY_MINUTES - 1, value));
-  const hours = String(Math.floor(safeMinutes / 60)).padStart(2, "0");
-  const minutes = String(safeMinutes % 60).padStart(2, "0");
-  return `${hours}:${minutes}`;
+  const safe = Math.max(0, Math.min(DAY_MINUTES - 1, value));
+  return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
 };
 
 const normalizeDuration = (
@@ -90,34 +102,25 @@ const normalizeDuration = (
   return DEFAULT_DURATION_MINUTES;
 };
 
-type BusyInterval = {
-  start: number;
-  end: number;
-  item: DailyTimelineItem;
-};
+type BusyInterval = { start: number; end: number; item: DailyTimelineItem };
 
 const buildBusyIntervals = (items: DailyTimelineItem[]): BusyInterval[] =>
   items
     .map((item) => {
-      const start = parseTimeToMinutes(item.startTime);
-      if (start === null) {
-        return null;
-      }
-
-      const parsedEnd = item.endTime ? parseTimeToMinutes(item.endTime) : null;
-      const end = parsedEnd !== null && parsedEnd > start
-        ? parsedEnd
-        : Math.min(start + DEFAULT_DURATION_MINUTES, DAY_MINUTES);
-      if (end <= start) {
-        return null;
-      }
-
+      const start = parseTimeToMinutes(item.start);
+      if (start === null) return null;
+      const parsedEnd = parseTimeToMinutes(item.end);
+      const end =
+        parsedEnd !== null && parsedEnd > start
+          ? parsedEnd
+          : Math.min(start + DEFAULT_DURATION_MINUTES, DAY_MINUTES);
+      if (end <= start) return null;
       return { start, end, item };
     })
     .filter((interval): interval is BusyInterval => interval !== null);
 
 const hasConflict = (start: number, end: number, busy: BusyInterval[]) =>
-  busy.some((interval) => start < interval.end && interval.start < end);
+  busy.some((i) => start < i.end && i.start < end);
 
 const buildConflictHints = (
   start: number,
@@ -125,18 +128,18 @@ const buildConflictHints = (
   busy: BusyInterval[]
 ): DayConflictHint[] =>
   busy
-    .filter((interval) => start < interval.end && interval.start < end)
-    .map((interval) => ({
-      eventId: interval.item.id,
-      title: interval.item.title,
-      startTime: interval.item.startTime,
-      endTime: interval.item.endTime,
+    .filter((i) => start < i.end && i.start < end)
+    .map((i) => ({
+      eventId: i.item.id,
+      name: i.item.name,
+      start: extractHHMM(i.item.start), // HH:MM for display in the hints UI
+      end: extractHHMM(i.item.end),
       overlapMinutes: Math.max(
         0,
-        Math.min(end, interval.end) - Math.max(start, interval.start)
+        Math.min(end, i.end) - Math.max(start, i.start)
       ),
     }))
-    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    .sort((a, b) => a.start.localeCompare(b.start));
 
 const slotInWorkingHours = (start: number, end: number) =>
   start >= WORKING_HOURS_START && end <= WORKING_HOURS_END;
@@ -146,14 +149,11 @@ const buildCandidateStarts = (startMinutes: number) => {
   for (let step = TIME_STEP_MINUTES; step <= 12 * 60; step += TIME_STEP_MINUTES) {
     deltas.push(step, -step);
   }
-
   const seen = new Set<number>();
   const candidates: number[] = [];
   deltas.forEach((delta) => {
     const next = startMinutes + delta;
-    if (next < 0 || next >= DAY_MINUTES || seen.has(next)) {
-      return;
-    }
+    if (next < 0 || next >= DAY_MINUTES || seen.has(next)) return;
     seen.add(next);
     candidates.push(next);
   });
@@ -161,12 +161,8 @@ const buildCandidateStarts = (startMinutes: number) => {
 };
 
 const buildSuggestionLabel = (deltaMinutes: number) => {
-  if (deltaMinutes === 0) {
-    return "Requested slot";
-  }
-  if (deltaMinutes > 0) {
-    return `${deltaMinutes} min later`;
-  }
+  if (deltaMinutes === 0) return "Requested slot";
+  if (deltaMinutes > 0) return `${deltaMinutes} min later`;
   return `${Math.abs(deltaMinutes)} min earlier`;
 };
 
@@ -178,69 +174,43 @@ const buildAvailabilitySuggestions = (
   const suggestions: DayAvailabilitySuggestion[] = [];
   const added = new Set<string>();
 
-  const candidates = buildCandidateStarts(requestedStart);
-  for (const candidateStart of candidates) {
-    const roundedStart =
-      Math.round(candidateStart / TIME_STEP_MINUTES) * TIME_STEP_MINUTES;
-    const start = Math.max(0, roundedStart);
+  for (const candidateStart of buildCandidateStarts(requestedStart)) {
+    const start =
+      Math.max(0, Math.round(candidateStart / TIME_STEP_MINUTES) * TIME_STEP_MINUTES);
     const end = start + durationMinutes;
-    if (end > DAY_MINUTES) {
-      continue;
-    }
-    if (hasConflict(start, end, busy)) {
-      continue;
-    }
-
+    if (end > DAY_MINUTES || hasConflict(start, end, busy)) continue;
     const key = `${start}-${end}`;
-    if (added.has(key)) {
-      continue;
-    }
+    if (added.has(key)) continue;
     added.add(key);
-
     suggestions.push({
       startTime: minutesToTimeString(start),
       endTime: minutesToTimeString(end),
       label: buildSuggestionLabel(start - requestedStart),
       inWorkingHours: slotInWorkingHours(start, end),
     });
-
-    if (suggestions.length >= 4) {
-      break;
-    }
+    if (suggestions.length >= 4) break;
   }
 
   return suggestions;
 };
 
-const cloneItems = (items: DailyTimelineItem[]) =>
+const cloneItems = (items: DailyTimelineItem[]): DailyTimelineItem[] =>
   items.map((item) => ({ ...item }));
 
 const readStoredValue = (): TimelineStore => {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
+  if (typeof window === "undefined") return {};
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return {};
-    }
-
+    if (!raw) return {};
     const parsed = JSON.parse(raw) as TimelineStore;
-    if (!parsed || typeof parsed !== "object") {
-      return {};
-    }
-    return parsed;
+    return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
   }
 };
 
 const persistStore = (store: TimelineStore) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
   } catch {
@@ -249,18 +219,24 @@ const persistStore = (store: TimelineStore) => {
 };
 
 const ensureStore = () => {
-  if (memoryStore) {
-    return memoryStore;
-  }
-
+  if (memoryStore) return memoryStore;
   memoryStore = readStoredValue();
   return memoryStore;
 };
 
+/** Replace the placeholder prefix with the actual YYYY-MM-DD key. */
+const seedItemsForDate = (dateKey: string): DailyTimelineItem[] =>
+  MOCK_SEED_ITEMS.map((item, i) => ({
+    ...item,
+    id: `m-seed-${i + 1}`,
+    start: item.start.replace("PLACEHOLDER_DATE ", dateKey),
+    end: item.end.replace("PLACEHOLDER_DATE ", dateKey),
+  }));
+
 const ensureDateItems = (store: TimelineStore, date: Date) => {
   const key = toDateKey(date);
   if (!store[key]) {
-    store[key] = cloneItems(MOCK_TODAY_ITEMS);
+    store[key] = seedItemsForDate(key);
     persistStore(store);
   }
   return { key, items: store[key] };
@@ -281,14 +257,14 @@ export async function createDayTimelineItem(
   const store = ensureStore();
   const { key, items } = ensureDateItems(store, date);
 
-  const createdItem: DailyTimelineItem = {
+  const created: DailyTimelineItem = {
     id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     ...input,
   };
 
-  store[key] = [...items, createdItem];
+  store[key] = [...items, created];
   persistStore(store);
-  return { ...createdItem };
+  return { ...created };
 }
 
 export async function updateDayTimelineItem(
@@ -301,15 +277,9 @@ export async function updateDayTimelineItem(
   const { key, items } = ensureDateItems(store, date);
 
   const index = items.findIndex((item) => item.id === eventId);
-  if (index === -1) {
-    throw new Error("Event not found.");
-  }
+  if (index === -1) throw new Error("Event not found.");
 
-  const updated = {
-    ...items[index],
-    ...updates,
-    id: items[index].id,
-  };
+  const updated = { ...items[index], ...updates, id: items[index].id };
   const next = [...items];
   next[index] = updated;
   store[key] = next;
@@ -337,9 +307,7 @@ export async function getDaySchedulingHints(
   const { items } = ensureDateItems(store, date);
 
   const startMinutes = parseTimeToMinutes(request.startTime);
-  if (startMinutes === null) {
-    throw new Error("Time must use HH:MM (24h).");
-  }
+  if (startMinutes === null) throw new Error("Time must use HH:MM (24h).");
 
   const durationMinutes = normalizeDuration(request, startMinutes);
   const endMinutes = Math.min(DAY_MINUTES, startMinutes + durationMinutes);

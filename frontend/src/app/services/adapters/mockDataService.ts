@@ -1,3 +1,13 @@
+/**
+ * Mock adapter — mirrors httpDataService.ts method-for-method using local data.
+ * Active when VITE_DATA_SOURCE=mock (the default). No backend needed.
+ *
+ * Mock data is stored in localStorage so it persists across page reloads.
+ * To reset it, run this in the browser console: localStorage.clear()
+ *
+ * When you add a new method to AppDataService in contracts.ts, you must add
+ * a matching stub here — TypeScript will error if any method is missing.
+ */
 import { createUser as mockCreateUser, login as mockLogin } from "../../api/Auth";
 import { fetchMonthEvents as mockFetchMonthEvents } from "../../api/Calendar";
 import {
@@ -7,6 +17,7 @@ import {
   getDaySchedulingHints as mockGetDaySchedulingHints,
   updateDayTimelineItem as mockUpdateDayTimelineItem,
 } from "../../api/Today";
+import { getDayAiSuggestions as mockGetDayAiSuggestions } from "../../api/AiSuggestions";
 import type { AppDataService } from "../contracts";
 
 export const mockDataService: AppDataService = {
@@ -16,8 +27,9 @@ export const mockDataService: AppDataService = {
   createUser(payload) {
     return mockCreateUser(
       payload.email,
-      payload.firstName,
-      payload.lastName,
+      payload.username,
+      payload.first_name,
+      payload.last_name,
       payload.password
     );
   },
@@ -32,11 +44,14 @@ export const mockDataService: AppDataService = {
   },
   createDayEvent(date, input) {
     return mockCreateDayTimelineItem(date, {
-      title: input.title,
-      startTime: input.startTime,
-      endTime: input.endTime,
+      name: input.name,
+      start: input.start,
+      end: input.end ?? input.start,
       description: input.description,
-      status: input.status,
+      priority: input.priority ?? 0,
+      location: input.location ?? null,
+      flexible: input.flexible ?? false,
+      travel_time_min: input.travel_time_min ?? 0,
     });
   },
   updateDayEvent(date, eventId, updates) {
@@ -44,5 +59,8 @@ export const mockDataService: AppDataService = {
   },
   deleteDayEvent(date, eventId) {
     return mockDeleteDayTimelineItem(date, eventId);
+  },
+  getDayAiSuggestions(date, items) {
+    return mockGetDayAiSuggestions(date, items);
   },
 };
