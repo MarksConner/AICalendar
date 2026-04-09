@@ -7,7 +7,7 @@ import { alpha } from "@mui/material/styles";
 export type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
 
 export interface BadgeProps
-  extends Omit<ChipProps, "color" | "size" | "label" | "variant"> {
+  extends Omit<ChipProps, "children" | "color" | "size" | "label" | "variant"> {
   variant?: BadgeVariant;
   children: ReactNode;
 }

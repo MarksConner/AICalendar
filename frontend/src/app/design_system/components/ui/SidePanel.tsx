@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import type { DrawerProps } from "@mui/material/Drawer";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { X } from "lucide-react";
 
 export interface SidePanelProps extends Omit<DrawerProps, "open" | "onClose"> {
@@ -24,21 +25,25 @@ export const SidePanel = ({
   PaperProps,
   ...props
 }: SidePanelProps): JSX.Element => {
-  const mergedPaperProps = {
+  const basePaperSx: SxProps<Theme> = {
+    width: "100%",
+    maxWidth: 448,
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.08)",
+  };
+  const mergedPaperSx: SxProps<Theme> = !PaperProps?.sx
+    ? basePaperSx
+    : Array.isArray(PaperProps.sx)
+    ? [basePaperSx, ...PaperProps.sx]
+    : [basePaperSx, PaperProps.sx];
+
+  const mergedPaperProps: DrawerProps["PaperProps"] = {
     ...PaperProps,
     className:
       [PaperProps?.className, className].filter(Boolean).join(" ") || undefined,
-    sx: [
-      {
-        width: "100%",
-        maxWidth: 448,
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: "0 10px 25px rgba(15, 23, 42, 0.08)",
-      },
-      PaperProps?.sx,
-    ],
-  } satisfies DrawerProps["PaperProps"];
+    sx: mergedPaperSx,
+  };
 
   return (
     <Drawer

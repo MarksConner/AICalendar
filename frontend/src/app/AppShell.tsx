@@ -1,19 +1,21 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useSearchParams } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
+import ButtonBase from "@mui/material/ButtonBase";
 import ButtonGroup from "@mui/material/ButtonGroup";
 import Fab from "@mui/material/Fab";
 import IconButton from "@mui/material/IconButton";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "./design_system/components/ui/Button";
 import { SidePanel } from "./design_system/components/ui/SidePanel";
-import { Toast } from "./design_system/components/ui/Toast";
-import { AiChatPanel } from "./components/AiChatPanel";
 import { CalendarSidebar } from "./components/CalendarSidebar";
 import { CalendarProvider } from "./contexts/CalendarContext";
+import type { CalendarView } from "./contexts/calendarState";
 import {
   CalendarDays,
   ChevronLeft,
@@ -22,12 +24,44 @@ import {
   MessageCircle,
 } from "lucide-react";
 
-const formatHeaderDate = (date: Date) =>
-  date.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+const calendarViewOptions: Array<{ value: CalendarView; label: string }> = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+];
+
+const isCalendarView = (value: string | null): value is CalendarView =>
+  value === "day" || value === "week" || value === "month";
+
+const parseCalendarView = (value: string | null): CalendarView =>
+  isCalendarView(value) ? value : "day";
+
+const toDateParam = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateParam = (value: string | null): Date | null => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(year, month - 1, day);
+  const isValidDate =
+    parsed.getFullYear() === year &&
+    parsed.getMonth() === month - 1 &&
+    parsed.getDate() === day;
+
+  if (!isValidDate) {
+    return null;
+  }
+
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+};
 
 const addDays = (date: Date, amount: number) => {
   const next = new Date(date);
@@ -35,21 +69,143 @@ const addDays = (date: Date, amount: number) => {
   return next;
 };
 
+const startOfWeek = (date: Date) => addDays(date, -date.getDay());
+
+const formatHeaderDate = (date: Date, view: CalendarView) => {
+  if (view === "month") {
+    return date.toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  if (view === "week") {
+    const weekStart = startOfWeek(date);
+    const weekEnd = addDays(weekStart, 6);
+    const startLabel = weekStart.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+    const endLabel = weekEnd.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const shiftDateByView = (date: Date, view: CalendarView, direction: -1 | 1) => {
+  if (view === "week") {
+    return addDays(date, direction * 7);
+  }
+  if (view === "month") {
+    const next = new Date(date);
+    next.setMonth(next.getMonth() + direction);
+    return next;
+  }
+  return addDays(date, direction);
+};
+
+const LazyAiChatPanel = lazy(() =>
+  import("./components/AiChatPanel").then((module) => ({
+    default: module.AiChatPanel,
+  }))
+);
+
 export function AppShell() {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const selectedDate = useMemo(
+    () => parseDateParam(searchParams.get("date")) ?? new Date(),
+    [searchParams]
+  );
+  const selectedView = useMemo(
+    () => parseCalendarView(searchParams.get("view")),
+    [searchParams]
+  );
+
+  useEffect(() => {
+    const rawDate = searchParams.get("date");
+    const rawView = searchParams.get("view");
+    const hasValidDate = parseDateParam(rawDate) !== null;
+    const hasValidView = isCalendarView(rawView);
+
+    if (hasValidDate && hasValidView) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (!hasValidDate) {
+      nextParams.set("date", toDateParam(selectedDate));
+    }
+    if (!hasValidView) {
+      nextParams.set("view", selectedView);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, selectedDate, selectedView, setSearchParams]);
+
+  const updateCalendarParams = useCallback(
+    (updates: { date?: Date; view?: CalendarView }) => {
+      setSearchParams((prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (updates.date) {
+          nextParams.set("date", toDateParam(updates.date));
+        }
+        if (updates.view) {
+          nextParams.set("view", updates.view);
+        }
+        return nextParams;
+      });
+    },
+    [setSearchParams]
+  );
+
+  const setSelectedDate = useCallback(
+    (date: Date) => {
+      updateCalendarParams({ date });
+    },
+    [updateCalendarParams]
+  );
+
+  const setSelectedView = useCallback(
+    (view: CalendarView) => {
+      updateCalendarParams({ view });
+    },
+    [updateCalendarParams]
+  );
+
+  const navigateToDay = useCallback(
+    (date: Date) => {
+      updateCalendarParams({ date, view: "day" });
+    },
+    [updateCalendarParams]
+  );
+
+  const handleGoToCalendarHome = () => {
+    const today = new Date();
+    navigate(`/?view=day&date=${toDateParam(today)}`);
+  };
+
   const handleOpenChat = () => setIsChatOpen(true);
   const handleCloseChat = () => setIsChatOpen(false);
   const handleToday = () => setSelectedDate(new Date());
-  const handlePrevDay = () =>
-    setSelectedDate((prev) => addDays(prev, -1));
-  const handleNextDay = () =>
-    setSelectedDate((prev) => addDays(prev, 1));
+  const handlePrev = () =>
+    setSelectedDate(shiftDateByView(selectedDate, selectedView, -1));
+  const handleNext = () =>
+    setSelectedDate(shiftDateByView(selectedDate, selectedView, 1));
 
   const calendarContextValue = useMemo(
-    () => ({ selectedDate, setSelectedDate }),
-    [selectedDate]
+    () => ({ selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay }),
+    [selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay]
   );
 
   return (
@@ -62,27 +218,86 @@ export function AppShell() {
           sx={{ borderBottom: 1, borderColor: "divider" }}
         >
           <Toolbar sx={{ gap: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <ButtonBase
+              aria-label="Go to calendar dashboard"
+              onClick={handleGoToCalendarHome}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                borderRadius: 1,
+                px: 0.5,
+                py: 0.25,
+                color: "text.primary",
+                "&:hover": {
+                  bgcolor: "action.hover",
+                },
+              }}
+            >
               <CalendarDays size={20} />
               <Typography variant="h6" fontWeight={600}>
                 Calendar
               </Typography>
-            </Box>
+            </ButtonBase>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Button size="sm" variant="secondary" onClick={handleToday}>
                 Today
               </Button>
-              <IconButton size="small" onClick={handlePrevDay} aria-label="Previous day">
+              <IconButton
+                size="small"
+                onClick={handlePrev}
+                aria-label={`Previous ${selectedView}`}
+              >
                 <ChevronLeft size={18} />
               </IconButton>
-              <IconButton size="small" onClick={handleNextDay} aria-label="Next day">
+              <IconButton
+                size="small"
+                onClick={handleNext}
+                aria-label={`Next ${selectedView}`}
+              >
                 <ChevronRight size={18} />
               </IconButton>
               <Typography variant="subtitle1" sx={{ minWidth: 200 }}>
-                {formatHeaderDate(selectedDate)}
+                {formatHeaderDate(selectedDate, selectedView)}
               </Typography>
             </Box>
+
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={selectedView}
+              aria-label="Calendar view"
+              onChange={(_event, nextView) => {
+                if (nextView) {
+                  setSelectedView(nextView as CalendarView);
+                }
+              }}
+              sx={{
+                "& .MuiToggleButton-root": {
+                  textTransform: "none",
+                  px: 1.5,
+                  py: 0.5,
+                  fontSize: "0.75rem",
+                  borderColor: "divider",
+                  color: "text.secondary",
+                },
+                "& .MuiToggleButton-root.Mui-selected": {
+                  bgcolor: "action.selected",
+                  color: "text.primary",
+                  fontWeight: 600,
+                },
+                "& .MuiToggleButton-root.Mui-selected:hover": {
+                  bgcolor: "action.selected",
+                },
+              }}
+            >
+              {calendarViewOptions.map((option) => (
+                <ToggleButton key={option.value} value={option.value}>
+                  {option.label}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
 
             <Box sx={{ flex: 1 }} />
 
@@ -129,13 +344,6 @@ export function AppShell() {
         <Box sx={{ display: "flex", flex: 1, minHeight: 0, bgcolor: "background.default" }}>
           <CalendarSidebar />
           <Box component="main" sx={{ flex: 1, minWidth: 0, p: 2, overflowY: "auto" }}>
-            <Box sx={{ mb: 2, maxWidth: 480 }}>
-              <Toast
-                variant="info"
-                title="Tip"
-                description="Use Today’s plan to see a detailed timeline for your day."
-              />
-            </Box>
             <Outlet />
           </Box>
         </Box>
@@ -165,7 +373,17 @@ export function AppShell() {
           title="AI chat"
           side="right"
         >
-          <AiChatPanel />
+          {isChatOpen ? (
+            <Suspense
+              fallback={
+                <Typography variant="body2" color="text.secondary">
+                  Loading AI chat…
+                </Typography>
+              }
+            >
+              <LazyAiChatPanel />
+            </Suspense>
+          ) : null}
         </SidePanel>
       </Box>
     </CalendarProvider>

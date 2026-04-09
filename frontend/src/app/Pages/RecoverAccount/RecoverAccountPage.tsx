@@ -12,8 +12,6 @@ import {
 } from "../../design_system/components/ui/Card";
 import { Input } from "../../design_system/components/ui/Input";
 import { Button } from "../../design_system/components/ui/Button";
-import LoginClient from "../../api_client/Auth";
-
 
 export const RecoverAccountPage = () => {
   const navigate = useNavigate();
@@ -21,7 +19,7 @@ export const RecoverAccountPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     setMessage(null);
 
@@ -29,14 +27,12 @@ export const RecoverAccountPage = () => {
       setMessage("Please enter your email.");
       return;
     }
-    const client = new LoginClient();
-    await client.SendRecoverPasswordEmail(email);
-    if (!client) {
-      setMessage("Failed to send recovery email. Please try again later.");
-      return;
-    }
-    setMessage("Check your email for the recovery link.");
-    
+
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setMessage("Check your inbox for a recovery link.");
+    }, 300);
   };
 
   return (

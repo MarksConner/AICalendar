@@ -12,16 +12,15 @@ import {
 } from "../../design_system/components/ui/Card";
 import { Input } from "../../design_system/components/ui/Input";
 import { Button } from "../../design_system/components/ui/Button";
-import CreateUserClient from "../../api_client/CreateUserClient";
-import LoginClient from "../../api_client/Auth"; 
+import { dataService } from "../../services";
 
 export const CreateUserPage = () => {
   const navigate = useNavigate();
-  const [first_name, setFirstName] = useState("");
-  const [last_name, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,7 +29,7 @@ export const CreateUserPage = () => {
     event.preventDefault();
     setError(null);
 
-    if (!first_name || !last_name || !email || !password || !confirmPassword || !username) {
+    if (!firstName || !lastName || !username || !email || !password || !confirmPassword) {
       setError("Please fill out all fields.");
       return;
     }
@@ -40,33 +39,36 @@ export const CreateUserPage = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-
-      const api = new CreateUserClient();
-
-      const res = await api.createUser({
-        email,
+      const result = await dataService.createUser({
+        first_name: firstName,
+        last_name: lastName,
         username,
-        first_name,
-        last_name,
+        email,
         password,
       });
 
-      const body = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(body?.detail || body?.message || "Failed to create account");
+      if (result?.token) {
+        // If backend returns an auth token on create, start session immediately.
+        localStorage.setItem("authToken", result.token);
       }
-      const verifyRes = await new LoginClient().sendVerificationEmail(email);
 
-      if (!verifyRes.ok) {
-        const vbody = await verifyRes.json().catch(() => null);
-        console.warn("Verification email failed:", vbody);
+      if (result?.user?.email) {
+        localStorage.setItem("authEmail", result.user.email);
       }
-      navigate("/login");
-    } catch (e: any) {
-      setError(e?.message || "Failed to create account.");
+
+      // Successful create in mock mode currently returns no token, so
+      // sending them to login keeps behavior predictable.
+      if (result?.token) {
+        navigate("/");
+      } else {
+        navigate("/login");
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to create account. Please try again.";
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -98,16 +100,25 @@ export const CreateUserPage = () => {
           <CardContent>
             <Stack spacing={2}>
               <Input
-                label="First Name"
+                label="First name"
                 placeholder="Jane"
-                value={first_name}
+                autoComplete="given-name"
+                value={firstName}
                 onChange={(event) => setFirstName(event.target.value)}
               />
               <Input
-                label="Last Name"
+                label="Last name"
                 placeholder="Doe"
-                value={last_name}
+                autoComplete="family-name"
+                value={lastName}
                 onChange={(event) => setLastName(event.target.value)}
+              />
+              <Input
+                label="Username"
+                placeholder="janedoe"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
               />
               <Input
                 label="Email"
@@ -116,12 +127,6 @@ export const CreateUserPage = () => {
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-              />
-              <Input
-                label="Username"
-                placeholder="janedoe"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
               />
               <Input
                 label="Password"

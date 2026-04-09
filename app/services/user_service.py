@@ -3,7 +3,8 @@ from app.db import SessionLocal
 from app.models.users import Users
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
-
+from app.models.refresh_token import RefreshToken
+import hashlib
 import uuid
 import jwt 
 
@@ -12,6 +13,8 @@ ALGORITHM = "HS256"
 
 def create_user(session: Session, email: str, username: str, first_name: str, last_name: str, password: str) -> Users:
 
+    if len(password) <= 8:
+        raise ValueError("Password must be more than 8 characters long.")
     token = uuid.uuid4()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     new_user = Users(
@@ -113,7 +116,8 @@ def create_reset_token(db: Session, email: str) ->bool:
     
 def reset_password_token(db: Session, email:str, token: str, new_password: str) -> bool:
     user = get_user_by_email(db,email)
-    
+    if len(new_password) <= 8:
+        raise ValueError("Password must be more than 8 characters long.")
     print("incoming token:", token, type(token))
     print("db token:", user.password_reset_token, type(user.password_reset_token))
     print("expires:", user.password_reset_expires_at, "now:", datetime.now(timezone.utc))
@@ -159,5 +163,20 @@ def  login_credentials_user(db, email: str, password: str):
     dictionary: dict
     dictionary = {"email": user.email,"user_id": str(user.user_id)}
     token = create_access_token(dictionary)   
+    
     return {"access_token": token,"token_type": "bearer"}
 
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+def create_refresh_session(db: Session, user_id, raw_refresh_token: str, expires_at: datetime):
+    row = RefreshToken(
+        user_id=user_id,
+        token_hash=hash_token(raw_refresh_token),
+        expires_at=expires_at,
+        revoked=False,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
 import Divider from "@mui/material/Divider";
@@ -7,19 +7,20 @@ import Typography from "@mui/material/Typography";
 import { useMatch, useResolvedPath, NavLink } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { MiniMonth } from "./MiniMonth";
-import { useCalendar } from "../contexts/CalendarContext";
-import {
-  CreateEventDialog,
-  type CreateCalendarFormData,
-  type CreateEventFormData,
-} from "../components/CreateEventDialog";
+import { useCalendar } from "../contexts/useCalendar";
 import { Button } from "../design_system/components/ui/Button";
-import CalendarClient from "../api_client/CalendarClient";
 
-type BackendCalendar = {
-  calendar_id: string;
-  calendar_name: string;
+type CalendarToggle = {
+  id: string;
+  label: string;
+  color: string;
 };
+
+const calendarToggles: CalendarToggle[] = [
+  { id: "primary", label: "My calendar", color: "#1a73e8" },
+  { id: "work", label: "Work", color: "#188038" },
+  { id: "personal", label: "Personal", color: "#a142f4" },
+];
 
 const SidebarLink = ({ to, label }: { to: string; label: string }) => {
   const resolved = useResolvedPath(to);
@@ -58,91 +59,20 @@ const SidebarLink = ({ to, label }: { to: string; label: string }) => {
 
 export const CalendarSidebar = () => {
   const { selectedDate, setSelectedDate } = useCalendar();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
-  const [selectedCalendarId, setSelectedCalendarId] = useState(
-    localStorage.getItem("calendar_id") || ""
+  const [enabledCalendars, setEnabledCalendars] = useState(() =>
+    new Set(calendarToggles.map((calendar) => calendar.id))
   );
 
-  useEffect(() => {
-    const fetchCalendars = async () => {
-      try {
-        const calendarClient = new CalendarClient();
-        const response = await calendarClient.getCalendarsAPI();
-        const data = await response.json().catch(() => []);
-
-        if (!response.ok) {
-          console.error("Failed to fetch calendars");
-          return;
-        }
-
-        setCalendars(data);
-
-        if (data.length > 0) {
-          const storedId = localStorage.getItem("calendar_id");
-          const validStoredId = data.some(
-            (calendar: BackendCalendar) => calendar.calendar_id === storedId
-          );
-
-          const defaultId = validStoredId ? storedId! : data[0].calendar_id;
-          localStorage.setItem("calendar_id", defaultId);
-          setSelectedCalendarId(defaultId);
-        }
-      } catch (err) {
-        console.error("Failed to fetch calendars", err);
-      }
-    };
-
-    fetchCalendars();
-  }, []);
-
   const handleToggleCalendar = (id: string) => {
-    setSelectedCalendarId(id);
-    localStorage.setItem("calendar_id", id);
-    console.log("Selected calendar_id stored:", id);
-  };
-
-  const handleCreateEvent = async (eventData: CreateEventFormData) => {
-    const calendarClient = new CalendarClient();
-    const response = await calendarClient.CreateEventAPI(eventData);
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(body?.detail || body?.message || "Failed to create event");
-    }
-  };
-
-  const handleCreateCalendar = async (calendarData: CreateCalendarFormData) => {
-    const calendarClient = new CalendarClient();
-    const user_id = localStorage.getItem("user_id");
-
-    if (!user_id) {
-      throw new Error("User ID not found");
-    }
-
-    const response = await calendarClient.createCalendarAPI(
-      calendarData.name,
-      undefined,
-      undefined
-    );
-    const body = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(body?.detail || body?.message || "Failed to create calendar");
-    }
-
-    const refreshResponse = await calendarClient.getCalendarsAPI();
-    const refreshedData = await refreshResponse.json().catch(() => []);
-
-    if (refreshResponse.ok) {
-      setCalendars(refreshedData);
-
-      if (refreshedData.length > 0) {
-        const newestCalendar = refreshedData[refreshedData.length - 1];
-        setSelectedCalendarId(newestCalendar.calendar_id);
-        localStorage.setItem("calendar_id", newestCalendar.calendar_id);
+    setEnabledCalendars((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
       }
-    }
+      return next;
+    });
   };
 
   return (
@@ -164,17 +94,9 @@ export const CalendarSidebar = () => {
         size="md"
         variant="primary"
         startIcon={<Plus size={16} />}
-        onClick={() => setIsCreateOpen(true)}
       >
         Create
       </Button>
-
-      <CreateEventDialog
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onSubmitCalendar={handleCreateCalendar}
-        onSubmitEvent={handleCreateEvent}
-      />
 
       <MiniMonth selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
@@ -185,9 +107,9 @@ export const CalendarSidebar = () => {
           My calendars
         </Typography>
         <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
-          {calendars.map((calendar) => (
+          {calendarToggles.map((calendar) => (
             <Box
-              key={calendar.calendar_id}
+              key={calendar.id}
               sx={{
                 display: "flex",
                 alignItems: "center",
@@ -197,11 +119,19 @@ export const CalendarSidebar = () => {
             >
               <Checkbox
                 size="small"
-                checked={selectedCalendarId === calendar.calendar_id}
-                onChange={() => handleToggleCalendar(calendar.calendar_id)}
+                checked={enabledCalendars.has(calendar.id)}
+                onChange={() => handleToggleCalendar(calendar.id)}
                 sx={{ p: 0.5 }}
               />
-              <Typography variant="body2">{calendar.calendar_name}</Typography>
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  bgcolor: calendar.color,
+                }}
+              />
+              <Typography variant="body2">{calendar.label}</Typography>
             </Box>
           ))}
         </Box>

@@ -2,6 +2,39 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Data Source Architecture
+
+The frontend uses a service contract so screens do not import mock files directly.
+
+- Service contract: `src/app/services/contracts.ts`
+- Runtime selector: `src/app/services/index.ts`
+- Mock adapter: `src/app/services/adapters/mockDataService.ts`
+- HTTP adapter: `src/app/services/adapters/http/httpDataService.ts`
+- HTTP helper: `src/app/services/adapters/http/httpClient.ts`
+
+Pages should import `dataService` from `src/app/services` and call methods from there.
+This keeps UI code stable while backend APIs evolve.
+
+## Environment Switch
+
+Use `.env.example` as the reference:
+
+- `VITE_DATA_SOURCE=mock` uses local mock APIs in `src/app/api`.
+- `VITE_DATA_SOURCE=api` uses backend HTTP calls.
+- `VITE_API_BASE_URL` sets backend origin for `api` mode.
+
+## Backend Endpoint Contract (Current)
+
+These are the HTTP adapter defaults and can be changed in one place if backend routes differ.
+
+- `POST /auth/login` with body `{ email, password }`
+- `GET /calendar/events?year=YYYY&monthIndex=0-11&month=1-12`
+- `GET /calendar/day-timeline?date=YYYY-MM-DD`
+- `GET /calendar/day-hints?date=YYYY-MM-DD&startTime=HH:MM&endTime=HH:MM&durationMinutes=N`
+- `POST /calendar/day-events` with body `{ date, title, startTime, endTime?, description?, status? }`
+- `PATCH /calendar/day-events/:eventId` with body `{ date, ...partialUpdates }`
+- `DELETE /calendar/day-events/:eventId?date=YYYY-MM-DD`
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh

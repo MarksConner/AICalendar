@@ -1,150 +1,91 @@
-import { useNavigate } from "react-router-dom";
-import { TimelineRow } from "../../design_system/components/ui/TimelineRow";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-} from "../../design_system/components/ui/Card";
-import { Banner } from "../../design_system/components/ui/Banner";
-import { Button } from "../../design_system/components/ui/Button";
-import { Modal } from "../../design_system/components/ui/Modal";
-import { Input } from "../../design_system/components/ui/Input";
-import { useState, useEffect } from "react";
-import type { DailyTimelineItem } from "../../Types/Calendar";
 import Box from "@mui/material/Box";
-import ButtonBase from "@mui/material/ButtonBase";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useCalendar } from "../../contexts/CalendarContext";
-import CalendarClient from "../../api_client/CalendarClient";
+import { useCallback } from "react";
+import { Banner } from "../../design_system/components/ui/Banner";
+import { Button } from "../../design_system/components/ui/Button";
+import { useCalendar } from "../../contexts/useCalendar";
+import type { CalendarView } from "../../contexts/calendarState";
+import { AddTaskModal } from "./AddTaskModal";
+import { AiSuggestionsPanel } from "./AiSuggestionsPanel";
+import { DayGrid } from "./DayGrid";
+import { EventDetailsDialog } from "./EventDetailsDialog";
+import { MonthView } from "./MonthView";
+import { WeekGrid } from "./WeekGrid";
+import { useDayPlanner } from "./useDayPlanner";
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+const getWeekStart = (date: Date): Date => {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+};
+
+const addDays = (date: Date, n: number): Date => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+};
+
+const getPageTitle = (
+  view: CalendarView,
+  date: Date,
+  isToday: boolean,
+  dateLabel: string
+): string => {
+  if (view === "day") return isToday ? "Today" : dateLabel;
+  if (view === "week") {
+    const wStart = getWeekStart(date);
+    const wEnd = addDays(wStart, 6);
+    const start = wStart.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const end = wEnd.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    return `${start} – ${end}`;
+  }
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+};
+
+const getPageSubtitle = (view: CalendarView, isToday: boolean, dateLabel: string): string => {
+  if (view === "day") {
+    return isToday
+      ? "A timeline of your day with AI-powered insights."
+      : `Events scheduled for ${dateLabel}.`;
+  }
+  if (view === "week") return "Click any day column header to open it in day view.";
+  return "Click a day to open it in day view.";
+};
+
+// ── component ─────────────────────────────────────────────────────────────────
 
 export const TodaysPlanPage = () => {
-  const navigate = useNavigate();
-  const { selectedDate } = useCalendar();
+  const { selectedDate, selectedView, navigateToDay } = useCalendar();
+  const planner = useDayPlanner({ selectedDate, selectedView });
 
-  const [items, setItems] = useState<DailyTimelineItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const handleNavigateToDay = useCallback(
+    (date: Date) => {
+      navigateToDay(date);
+    },
+    [navigateToDay]
+  );
 
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newTime, setNewTime] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [calendarClient] = useState(() => new CalendarClient());
+  const pageTitle = getPageTitle(
+    selectedView,
+    selectedDate,
+    planner.isToday,
+    planner.dateLabel
+  );
+  const pageSubtitle = getPageSubtitle(selectedView, planner.isToday, planner.dateLabel);
 
-  // Helper function to combine selected date with time input so that calendar API can work with add task modal simplified inputs
-  const buildDateTimeFromSelectedDate = (date: Date, time: string) => {
-    const [hours, minutes] = time.split(":").map(Number);
-
-    const combined = new Date(date);
-    combined.setHours(hours, minutes, 0, 0);
-
-    return combined;
-  };
-
-  const fetchTimeline = async () => {
-    setIsLoading(true);
-    setError(null);
-    console.log("fetchTimeline running");
-    console.log("calendar_id:", localStorage.getItem("calendar_id"));
-    try {
-      const calendar_id = localStorage.getItem("calendar_id");
-      if (!calendar_id) {
-        throw new Error("No calendar selected");
-      }
-
-      const dateString = selectedDate.toISOString().split("T")[0];
-
-      const response = await calendarClient.getAllEventsinAdayAPI(
-        calendar_id,
-        dateString
-      );
-      
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch events");
-      }
-
-      const data = await response.json();
-
-      const timelineItems: DailyTimelineItem[] = data.map((event: any) => ({
-        id: event.event_id,
-        startTime: new Date(event.start_time).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        title: event.event_name,
-        description: event.event_description || undefined,
-        status: "default",
-      }));
-
-      setItems(
-        timelineItems.sort((a, b) => a.startTime.localeCompare(b.startTime))
-      );
-    } catch (err) {
-      setError("Could not load events for this day.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTimeline();
-  }, [selectedDate]);
-
-  const dateLabel = selectedDate.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-
-  const isToday =
-    selectedDate.toDateString() === new Date().toDateString();
-
-  const handleOpenAdd = () => {
-    setNewTitle("");
-    setNewTime("");
-    setNewDescription("");
-    setIsAddOpen(true);
-  };
-
-  const handleAddTask = async () => {
-  if (!newTitle || !newTime) {
-    return;
-  }
-
-  try {
-    const calendar_id = localStorage.getItem("calendar_id");
-    if (!calendar_id) {
-      throw new Error("No calendar selected");
-    }
-
-    const startDateTime = buildDateTimeFromSelectedDate(selectedDate, newTime);
-
-    const endDateTime = new Date(startDateTime);
-    endDateTime.setHours(endDateTime.getHours() + 1);
-
-    const response = await calendarClient.CreateEventAPI({
-      calendar_id,
-      title: newTitle,
-      description: newDescription || "",
-      start_time: startDateTime.toISOString(),
-      end_time: endDateTime.toISOString(),
-      location: "",
-    });
-
-      if (!response.ok) {
-        throw new Error("Failed to create event");
-      }
-
-      setIsAddOpen(false);
-      fetchTimeline();
-    } catch (err) {
-      setError("Could not create event.");
-    }
-  };
   return (
-    <Stack spacing={2} sx={{ maxWidth: 672 }}>
+    <Stack
+      spacing={2}
+      sx={{ maxWidth: selectedView === "month" ? 900 : "100%" }}
+    >
+      {/* Page header */}
       <Box
         sx={{
           display: "flex",
@@ -156,109 +97,106 @@ export const TodaysPlanPage = () => {
       >
         <Box>
           <Typography variant="h5" fontWeight={600}>
-            {isToday ? "Today" : dateLabel}
+            {pageTitle}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {isToday
-              ? "A timeline of your day with AI-powered insights."
-              : `Events scheduled for ${dateLabel}.`}
+            {pageSubtitle}
           </Typography>
         </Box>
-        <Button size="sm" onClick={handleOpenAdd}>
-          Add task
+        <Button
+          size="sm"
+          onClick={planner.handleOpenAdd}
+          disabled={planner.isCreatingEvent}
+        >
+          {planner.isCreatingEvent ? "Saving task…" : "Add task"}
         </Button>
       </Box>
 
-      <Banner
-        variant="info"
-        title="AI suggestion"
-        message="If you leave by 10:35 AM, you’ll arrive on time for your team sync, accounting for traffic and buffer time."
+      {planner.persistError && (
+        <Banner
+          variant="error"
+          title="Could not save changes"
+          message={planner.persistError}
+        />
+      )}
+
+      {/* Day view — grid + AI suggestions side by side */}
+      {selectedView === "day" && (
+        <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+          <Box sx={{ flex: 1, minWidth: 0, maxWidth: 672 }}>
+            <DayGrid
+              dayGridScrollRef={planner.dayGridScrollRef}
+              error={planner.error}
+              hours={planner.hours}
+              interactionState={planner.interactionState}
+              isLoading={planner.isLoading}
+              isToday={planner.isToday}
+              itemsCount={planner.items.length}
+              nowMinutes={planner.nowMinutes}
+              onOpenEvent={planner.handleOpenEventDetails}
+              onStartInteraction={planner.startEventInteraction}
+              positionedItems={planner.positionedItems}
+              savingEventIds={planner.savingEventIds}
+            />
+          </Box>
+          <AiSuggestionsPanel date={selectedDate} items={planner.items} />
+        </Box>
+      )}
+
+      {/* Week view */}
+      {selectedView === "week" && (
+        <WeekGrid
+          selectedDate={selectedDate}
+          onNavigateToDay={handleNavigateToDay}
+        />
+      )}
+
+      {/* Month view */}
+      {selectedView === "month" && (
+        <MonthView
+          selectedDate={selectedDate}
+          onDayClick={handleNavigateToDay}
+        />
+      )}
+
+      {/* Event detail + add-task modals (available in all views) */}
+      <EventDetailsDialog
+        isOpen={planner.isEventDetailsOpen}
+        event={planner.selectedEvent}
+        isEditing={planner.isEditingEvent}
+        isSaving={planner.isSelectedEventSaving}
+        editDescription={planner.editDescription}
+        editEndTime={planner.editEndTime}
+        editError={planner.eventEditError}
+        editStartTime={planner.editStartTime}
+        editTitle={planner.editTitle}
+        onClose={planner.handleCloseEventDetails}
+        onCancelEdit={planner.handleCancelEventEdit}
+        onDelete={planner.handleDeleteEvent}
+        onEdit={planner.handleStartEventEdit}
+        onSaveEdit={planner.handleSaveEventEdit}
+        onSetEditDescription={planner.setEditDescription}
+        onSetEditEndTime={planner.setEditEndTime}
+        onSetEditStartTime={planner.setEditStartTime}
+        onSetEditTitle={planner.setEditTitle}
       />
 
-      <Card>
-        <CardHeader>
-          <Typography variant="h6" fontWeight={600}>
-            Timeline
-          </Typography>
-        </CardHeader>
-        <CardContent>
-          <Stack spacing={1}>
-            {isLoading && (
-              <Typography variant="body2" color="text.secondary">
-                Loading events…
-              </Typography>
-            )}
-            {error && (
-              <Typography variant="body2" color="error">
-                {error}
-              </Typography>
-            )}
-            {!isLoading && !error && items.length === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                No events yet. Use &quot;Add task&quot; to start planning your day.
-              </Typography>
-            )}
-            {!isLoading &&
-              !error &&
-              items.map((item) => (
-                <ButtonBase
-                  key={item.id}
-                  type="button"
-                  disableRipple
-                  onClick={() => navigate(`/events/${item.id}`)}
-                  sx={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    borderRadius: 1,
-                  }}
-                >
-                  <TimelineRow
-                    time={item.startTime}
-                    title={item.title}
-                    description={item.description}
-                    status={item.status}
-                  />
-                </ButtonBase>
-              ))}
-          </Stack>
-        </CardContent>
-      </Card>
-
-      <Modal
-        isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
-        title="Add task"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setIsAddOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddTask}>Save</Button>
-          </>
-        }
-      >
-        <Stack spacing={1.5}>
-          <Input
-            label="Title"
-            placeholder="e.g., Deep work – ML project"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-          />
-          <Input
-            label="Time"
-            placeholder="HH:MM (24h)"
-            value={newTime}
-            onChange={(e) => setNewTime(e.target.value)}
-          />
-          <Input
-            label="Description (optional)"
-            placeholder="Short note about this task"
-            value={newDescription}
-            onChange={(e) => setNewDescription(e.target.value)}
-          />
-        </Stack>
-      </Modal>
+      <AddTaskModal
+        addTaskError={planner.addTaskError}
+        hintError={planner.hintError}
+        isCreatingEvent={planner.isCreatingEvent}
+        isLoadingHints={planner.isLoadingHints}
+        isOpen={planner.isAddOpen}
+        newDescription={planner.newDescription}
+        newTime={planner.newTime}
+        newTitle={planner.newTitle}
+        onClose={planner.handleCloseAdd}
+        onDescriptionChange={planner.setNewDescription}
+        onSave={planner.handleAddTask}
+        onTimeChange={planner.setNewTime}
+        onTitleChange={planner.setNewTitle}
+        schedulingHints={planner.schedulingHints}
+      />
     </Stack>
   );
 };

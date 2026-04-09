@@ -34,6 +34,10 @@ class AccessToken(BaseModel):
 class UserResponse(BaseModel):
     user_id: UUID
     email: str
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
     
 #Calendar pydantic operations
 class CalendarCreate(BaseModel):

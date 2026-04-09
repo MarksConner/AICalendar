@@ -6,6 +6,7 @@ import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
 import Box from "@mui/material/Box";
 import type { DialogProps } from "@mui/material/Dialog";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { X } from "lucide-react";
 
 export interface ModalProps extends Omit<DialogProps, "open" | "onClose"> {
@@ -30,21 +31,25 @@ export const Modal = ({
     onClose();
   };
 
-  const mergedPaperProps = {
+  const basePaperSx: SxProps<Theme> = {
+    width: "100%",
+    maxWidth: 512,
+    maxHeight: "90vh",
+    display: "flex",
+    flexDirection: "column",
+    borderRadius: 2,
+  };
+  const mergedPaperSx: SxProps<Theme> = !PaperProps?.sx
+    ? basePaperSx
+    : Array.isArray(PaperProps.sx)
+    ? [basePaperSx, ...PaperProps.sx]
+    : [basePaperSx, PaperProps.sx];
+
+  const mergedPaperProps: DialogProps["PaperProps"] = {
     ...PaperProps,
     className: [PaperProps?.className, className].filter(Boolean).join(" ") || undefined,
-    sx: [
-      {
-        width: "100%",
-        maxWidth: 512,
-        maxHeight: "90vh",
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: 2,
-      },
-      PaperProps?.sx,
-    ],
-  } satisfies DialogProps["PaperProps"];
+    sx: mergedPaperSx,
+  };
 
   return (
     <Dialog

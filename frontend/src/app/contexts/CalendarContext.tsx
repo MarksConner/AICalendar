@@ -1,12 +1,6 @@
-import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
-
-type CalendarContextValue = {
-  selectedDate: Date;
-  setSelectedDate: (date: Date) => void;
-};
-
-const CalendarContext = createContext<CalendarContextValue | null>(null);
+import type { CalendarContextValue } from "./calendarState";
+import { CalendarContext } from "./calendarState";
 
 export const CalendarProvider = ({
   value,
@@ -16,12 +10,4 @@ export const CalendarProvider = ({
   children: ReactNode;
 }) => {
   return <CalendarContext.Provider value={value}>{children}</CalendarContext.Provider>;
-};
-
-export const useCalendar = () => {
-  const context = useContext(CalendarContext);
-  if (!context) {
-    throw new Error("useCalendar must be used within CalendarProvider");
-  }
-  return context;
 };

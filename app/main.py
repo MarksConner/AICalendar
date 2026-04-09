@@ -4,7 +4,11 @@ from app.api import calendar
 from app.api import events_api
 from app.api import chat_api
 from app.api import messages_api
+
+# LLM agent for AI suggestions and chatbot. Backend Folder
 from backend.chat import router as chat_router
+from backend.api_llm_agent import router as ai_suggestions_router
+
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,6 +18,7 @@ app.include_router(users.router)
 app.include_router(events_api.router)
 app.include_router(chat_api.router)
 app.include_router(messages_api.router)
+app.include_router(ai_suggestions_router)
 app.include_router(chat_router, prefix="/chat", tags=["chat"])
 
 from fastapi.middleware.cors import CORSMiddleware

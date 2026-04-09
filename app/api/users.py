@@ -1,6 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.base_model_classes import UserCreate, UserLogin,UserEmailVerify, UserResponse, UserUpdatePassword
+from app.api.base_model_classes import RefreshRequest, UserCreate, UserLogin,UserEmailVerify, UserResponse, UserUpdatePassword
 from sqlalchemy.orm import Session
 from app.models.users import Users
 from app.db import SessionLocal
@@ -8,6 +8,7 @@ from app.services.user_service import (create_user,delete_user_by_email,verify_u
 from app.config import get_current_user
 from datetime import datetime, timezone
 from app.services.verify_email import mail, create_message
+from app.security.jwt import check_refresh_token_expiration, create_refresh_token
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -49,8 +50,9 @@ def login_route(user: UserLogin, db: Session = Depends(get_db)):
 
     db_user = get_user_by_email(db, user.email)
     token = create_access_token({"sub": db_user.email, "user_id": str(db_user.user_id)})
-
-    return {"access_token": token, "user_id": db_user.user_id, "token_type": "bearer"}
+    refresh_token = create_refresh_token({ "user_id": str(db_user.user_id)})
+    
+    return {"access_token": token, "refresh_token": refresh_token, "user_id": db_user.user_id, "token_type": "bearer"}
 
 @router.post("/send_verification_email")
 async def send_verification_email(user_data: UserEmailVerify,db: Session = Depends(get_db)):
@@ -95,4 +97,16 @@ def get_user_by_id_route(user_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-
+# users/refresh full path 
+@router.post("/refresh")
+def refresh_route(payload: RefreshRequest):
+    try:
+        decoded = check_refresh_token_expiration(payload.refresh_token)
+        user_id = decoded["sub"]
+        new_access_token = create_access_token(user_id)
+        return {
+            "access_token": new_access_token,
+            "token_type": "bearer",
+        }
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")

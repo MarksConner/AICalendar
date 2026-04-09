@@ -30,3 +30,28 @@ def decode_access_token(token: str) -> dict:
         raise ValueError("TOKEN_MISSING_SUB")
 
     return payload
+
+# This function is similar to create_access_token but creates a refresh token that is valid for 7 days. The payload includes a "type" claim to distinguish it from access tokens.
+def create_refresh_token(user_id: str) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": user_id,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(days=7)).timestamp()),
+        "type": "refresh",
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
+
+# This function checks if refresh token is valid
+def check_refresh_token_expiration(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+    except ExpiredSignatureError:
+        raise ValueError("TOKEN_EXPIRED")
+    except JWTError:
+        raise ValueError("TOKEN_INVALID")
+    if payload.get("type") != "refresh":
+        raise ValueError("TOKEN_WRONG_TYPE")
+    if "sub" not in payload:
+        raise ValueError("TOKEN_MISSING_SUB")
+    return payload

@@ -9,7 +9,7 @@ import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 
 export type ToastVariant = 'success' | 'error' | 'info';
 
-export interface ToastProps extends Omit<PaperProps, "children"> {
+export interface ToastProps extends Omit<PaperProps, "children" | "variant"> {
   variant?: ToastVariant;
   title: string;
   description?: string;

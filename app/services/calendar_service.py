@@ -4,7 +4,9 @@ from app.models.calendar import Calendar
 from app.models.events  import Events
 from sqlalchemy import UUID
 from datetime import datetime
+from backend.llm_agent import ask_llm
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 def create_calendar(session: Session, calendar_name: str,user_id: UUID, date_start: Optional[datetime] = None, date_end:Optional[datetime] = None, icsfile: Optional[str] = None)->Calendar:
     new_calendar = Calendar(    
@@ -111,4 +113,144 @@ def get_calendar_context(session: Session, calendar_id: str) -> dict:
             }
             for event in events
         ]
+    }
+
+def day_scheduling_hints(
+    db: Session,
+    user_id: UUID,
+    calendar_id: UUID,
+    date: str,
+    start_time: str,
+    duration_minutes: int,
+    end_time: str | None = None,
+):
+    # Validate calendar exists and belongs to user
+    calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
+    if not calendar:
+        raise HTTPException(status_code=404, detail="Calendar not found")
+
+    # Validate calendar ownership
+    if str(calendar.user_id) != str(user_id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this calendar")
+
+    try:
+        datetime.fromisoformat(date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    # Validate start_time and end_time formats
+    if end_time is None:
+        end_time = "23:59"
+    # Validate start_time and end_time formats
+    try:
+        requested_start = datetime.fromisoformat(f"{date}T{start_time}:00")
+        requested_end = requested_start.replace(
+            hour=requested_start.hour,
+            minute=requested_start.minute
+        )
+        requested_end = requested_start.fromisoformat(
+            f"{date}T{end_time}:00"
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM")
+    # Validate that end_time is after start_time
+    if requested_end <= requested_start:
+        raise HTTPException(status_code=400, detail="endTime must be after startTime")
+
+    # Return a event list with all events in calendar 
+    events = (
+        db.query(Events)
+        .filter(Events.calendar_id == calendar_id)
+        .all()
+    )
+
+    day_events = []
+    conflicts = []
+
+    proposed_end = requested_start + __import__("datetime").timedelta(minutes=duration_minutes)
+
+    # Validate that proposed_end does not exceed end_time
+    for event in events:
+        if not event.start_time:
+            continue
+        if event.start_time.date().isoformat() != date:
+            continue
+
+        event_start = event.start_time
+        event_end = event.end_time if event.end_time else event.start_time
+
+        day_events.append((event, event_start, event_end))
+
+        overlap_start = max(event_start, requested_start)
+        overlap_end = min(event_end, proposed_end)
+        if overlap_end > overlap_start:
+            overlap_minutes = int((overlap_end - overlap_start).total_seconds() // 60)
+            conflicts.append({
+                "eventId": str(event.event_id),
+                "name": event.event_name,
+                "start": event_start.strftime("%H:%M"),
+                "end": event_end.strftime("%H:%M") if event_end else None,
+                "overlapMinutes": overlap_minutes,
+            })
+
+    # clip events to search window
+    busy_ranges = [] # list of (start, end) tuples representing busy time ranges within the requested window
+
+    for event, event_start, event_end in day_events:
+        if event_end <= requested_start or event_start >= requested_end:
+            continue
+
+        clipped_start = max(event_start, requested_start)
+        clipped_end = min(event_end, requested_end)
+
+        if clipped_end > clipped_start:
+            busy_ranges.append((clipped_start, clipped_end))
+
+    busy_ranges.sort(key=lambda x: x[0])
+
+    merged = []
+    for start, end in busy_ranges:
+        if not merged:
+            merged.append([start, end])
+        else:
+            last_start, last_end = merged[-1]
+            if start <= last_end:
+                merged[-1][1] = max(last_end, end)
+            else:
+                merged.append([start, end])
+
+    suggestions = []
+    cursor = requested_start
+
+    for busy_start, busy_end in merged:
+        if busy_start > cursor:
+            gap_minutes = int((busy_start - cursor).total_seconds() // 60)
+            if gap_minutes >= duration_minutes:
+                suggestions.append({
+                    "startTime": cursor.strftime("%H:%M"),
+                    "endTime": busy_start.strftime("%H:%M"),
+                    "label": f"{gap_minutes} min free",
+                    "inWorkingHours": True,
+                })
+        cursor = max(cursor, busy_end)
+
+    if cursor < requested_end:
+        gap_minutes = int((requested_end - cursor).total_seconds() // 60)
+        if gap_minutes >= duration_minutes:
+            suggestions.append({
+                "startTime": cursor.strftime("%H:%M"),
+                "endTime": requested_end.strftime("%H:%M"),
+                "label": f"{gap_minutes} min free",
+                "inWorkingHours": True,
+            })
+
+    return {
+        "hasConflict": len(conflicts) > 0,
+        "inWorkingHours": True,
+        "workingHours": {
+            "startTime": start_time,
+            "endTime": end_time,
+        },
+        "conflicts": conflicts,
+        "suggestions": suggestions,
     }

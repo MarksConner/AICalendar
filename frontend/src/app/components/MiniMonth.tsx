@@ -128,13 +128,14 @@ export const MiniMonth = ({ selectedDate, onSelectDate }: MiniMonthProps) => {
             return <Box key={cell.key} sx={{ height: 28 }} />;
           }
 
-          const isSelected = isSameDay(cell.date, selectedDate);
-          const isToday = isSameDay(cell.date, today);
+          const cellDate = cell.date;
+          const isSelected = isSameDay(cellDate, selectedDate);
+          const isToday = isSameDay(cellDate, today);
 
           return (
             <ButtonBase
               key={cell.key}
-              onClick={() => onSelectDate(cell.date)}
+              onClick={() => onSelectDate(cellDate)}
               sx={{
                 height: 28,
                 borderRadius: 1,
