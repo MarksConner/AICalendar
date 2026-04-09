@@ -16,7 +16,7 @@ type RequestJsonOptions = Omit<RequestInit, "body"> & {
   query?: Record<string, QueryValue>;
 };
 
-const rawBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
+const rawBaseUrl = import.meta.env.VITE_BASE_API_URL?.trim() ?? "";
 const apiBaseUrl = rawBaseUrl.replace(/\/+$/, "");
 
 function buildRequestUrl(path: string, query?: Record<string, QueryValue>) {
@@ -50,20 +50,70 @@ function extractErrorMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
+function getStoredAccessToken() {
+  if (typeof window === "undefined") return null;
+
+  return (
+    window.localStorage.getItem("access_token") ??
+    window.localStorage.getItem("authToken")
+  );
+}
+
 function getAuthHeader() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  // Include the saved token on every API request, if present.
-  const token = window.localStorage.getItem("authToken");
-  if (!token) {
-    return null;
-  }
-
+  const token = getStoredAccessToken();
+  if (!token) return null;
   return `Bearer ${token}`;
 }
 
+function clearAuthStorage() {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.removeItem("access_token");
+  window.localStorage.removeItem("authToken");
+  window.localStorage.removeItem("refresh_token");
+  window.localStorage.removeItem("user_id");
+}
+
+function redirectToLogin() {
+  if (typeof window === "undefined") return;
+  window.location.href = "/login";
+}
+
+function getStoredRefreshToken() {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem("refresh_token");
+}
+async function tryRefreshAccessToken(): Promise<string | null> {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const response = await fetch(buildRequestUrl("/users/refresh"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json().catch(() => null);
+    const newAccessToken =
+      payload?.access_token ?? payload?.token ?? null;
+
+    if (!newAccessToken) {
+      return null;
+    }
+
+    window.localStorage.setItem("access_token", newAccessToken);
+    return newAccessToken;
+  } catch {
+    return null;
+  }
+}
 export async function requestJson<T>(
   path: string,
   options: RequestJsonOptions = {}
@@ -72,7 +122,6 @@ export async function requestJson<T>(
   const requestHeaders = new Headers(headers);
   const authHeader = getAuthHeader();
 
-  // If a token exists and caller did not pass one, inject Authorization automatically.
   if (authHeader && !requestHeaders.has("Authorization")) {
     requestHeaders.set("Authorization", authHeader);
   }
@@ -81,11 +130,36 @@ export async function requestJson<T>(
     requestHeaders.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(buildRequestUrl(path, query), {
-    ...init,
-    headers: requestHeaders,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const doFetch = async (accessTokenOverride?: string) => {
+    const currentHeaders = new Headers(requestHeaders);
+
+    if (accessTokenOverride) {
+      currentHeaders.set("Authorization", `Bearer ${accessTokenOverride}`);
+    }
+
+    return fetch(buildRequestUrl(path, query), {
+      ...init,
+      headers: currentHeaders,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  };
+
+  let response = await doFetch();
+
+  const isRefreshRequest = path === "/users/refresh";
+  const isLoginRequest = path === "/users/login";
+
+  if (response.status === 401 && !isRefreshRequest && !isLoginRequest) {
+    const newAccessToken = await tryRefreshAccessToken();
+
+    if (newAccessToken) {
+      response = await doFetch(newAccessToken);
+    } else {
+      clearAuthStorage();
+      redirectToLogin();
+      throw new Error("Session expired. Please log in again.");
+    }
+  }
 
   const contentType = response.headers.get("Content-Type") ?? "";
   const isJson = contentType.includes("application/json");

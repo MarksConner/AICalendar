@@ -1,17 +1,15 @@
-import type { FormEvent, ChangeEvent } from "react";
+import { useEffect, useState } from "react";
+import type { FormEvent, ChangeEvent, MouseEvent } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import MenuItem from "@mui/material/MenuItem";
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { Button } from "../design_system/components/ui/Button";
 import { Input } from "../design_system/components/ui/Input";
 import { Modal } from "../design_system/components/ui/Modal";
 import CalendarClient from "../api_client/CalendarClient";
-import { useState, useEffect } from "react";
 
 type DialogMode = "event" | "calendar";
 
@@ -33,14 +31,11 @@ export type CreateEventFormData = {
 
 export type CreateCalendarFormData = {
   name: string;
-  date_start?: string;
-  date_end?: string;
 };
 
-const defaultCalendarFormData: CreateCalendarFormData = {
-  name: "",
-  date_start: "",
-  date_end: "",
+type CalendarOption = {
+  calendar_id: string;
+  calendar_name: string;
 };
 
 const defaultEventFormData: CreateEventFormData = {
@@ -49,57 +44,76 @@ const defaultEventFormData: CreateEventFormData = {
   start_time: "",
   end_time: "",
   location: "",
-  calendar_id: ""
+  calendar_id: "",
 };
 
-export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalendar,}: CreateEventDialogProps) => {
+const defaultCalendarFormData: CreateCalendarFormData = {
+  name: "",
+};
+
+export const CreateEventDialog = ({
+  isOpen,
+  onClose,
+  onSubmitEvent,
+  onSubmitCalendar,
+}: CreateEventDialogProps) => {
   const [mode, setMode] = useState<DialogMode>("event");
-  const [eventFormData, setEventFormData] =useState<CreateEventFormData>(defaultEventFormData);
-  const [calendarFormData, setCalendarFormData] =useState<CreateCalendarFormData>(defaultCalendarFormData);
+  const [eventFormData, setEventFormData] =
+    useState<CreateEventFormData>(defaultEventFormData);
+  const [calendarFormData, setCalendarFormData] =
+    useState<CreateCalendarFormData>(defaultCalendarFormData);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [calendars, setCalendars] = useState<any[]>([]);
-  const [selectedCalendarId, setSelectedCalendarId] = useState<string>("");
-  const [icsFile, setIcsFile] = useState<File | null>(null);
-  const userId = localStorage.getItem("user_id") || "";
+  const [calendars, setCalendars] = useState<CalendarOption[]>([]);
 
   useEffect(() => {
-      if (isOpen) {
+    if (!isOpen) return;
+
+    let isMounted = true;
+
+    const fetchCalendars = async () => {
+      try {
         const calendarOptionsClient = new CalendarClient();
-        calendarOptionsClient.getCalendarsAPI().then((response) => {
-          if (!response.ok) {
-            console.error("Failed to fetch calendars");
-            return;
-          }
-          response.json().then((data) => {
-            console.log("Fetched calendars:", data);
-            setCalendars(data);
-            if(data.length > 0) {
-              setSelectedCalendarId(data[0].calendar_id);
-              setEventFormData((prev) => ({
-                ...prev,
-                calendar_id: data[0].calendar_id
-              }));
-            }
-          }).catch((err) => {
-            console.error("Failed to parse calendars response:", err);
-          }
-          );
+        const response = await calendarOptionsClient.getCalendarsAPI();
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch calendars.");
         }
-        ).catch((err) => {
-          console.error("Error fetching calendars:", err);
+
+        const data: CalendarOption[] = await response.json();
+
+        if (!isMounted) return;
+
+        setCalendars(data);
+
+        if (data.length > 0) {
+          setEventFormData((prev) => ({
+            ...prev,
+            calendar_id: prev.calendar_id || data[0].calendar_id,
+          }));
         }
-        );
+      } catch (err) {
+        console.error("Error fetching calendars:", err);
+        if (isMounted) {
+          setCalendars([]);
+        }
       }
-    }, [isOpen]);
+    };
+
+    fetchCalendars();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
 
   const resetForm = () => {
     setMode("event");
     setEventFormData(defaultEventFormData);
     setCalendarFormData(defaultCalendarFormData);
-    setIcsFile(null);
     setError(null);
     setIsSubmitting(false);
+    setCalendars([]);
   };
 
   const handleClose = () => {
@@ -107,25 +121,32 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
     onClose();
   };
 
-  const handleModeChange = (_event: React.MouseEvent<HTMLElement>,newMode: DialogMode | null ) => {if (!newMode) return;
+  const handleModeChange = (
+    _event: MouseEvent<HTMLElement>,
+    newMode: DialogMode | null
+  ) => {
+    if (!newMode) return;
     setMode(newMode);
     setError(null);
   };
 
-  const handleEventChange = (field: keyof CreateEventFormData) =>
+  const handleEventChange =
+    (field: keyof CreateEventFormData) =>
     (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
       setEventFormData((prev) => ({
         ...prev,
-        [field]: event.target.value,
+        [field]: value,
       }));
-    }
+    };
 
   const handleCalendarChange =
     (field: keyof CreateCalendarFormData) =>
     (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
       setCalendarFormData((prev) => ({
         ...prev,
-        [field]: event.target.value,
+        [field]: value,
       }));
     };
 
@@ -133,12 +154,13 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
     if (!eventFormData.title.trim()) return "Title is required.";
     if (!eventFormData.calendar_id) return "Calendar is required.";
 
-    if (
-      eventFormData.start_time &&
-      eventFormData.end_time &&
-      eventFormData.end_time < eventFormData.start_time
-    ) {
-      return "End time cannot be earlier than start time.";
+    if (eventFormData.start_time && eventFormData.end_time) {
+      const start = new Date(eventFormData.start_time);
+      const end = new Date(eventFormData.end_time);
+
+      if (end < start) {
+        return "End time cannot be earlier than start time.";
+      }
     }
 
     return null;
@@ -151,7 +173,9 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const validationError = mode === "event" ? validateEventForm() : validateCalendarForm();
+
+    const validationError =
+      mode === "event" ? validateEventForm() : validateCalendarForm();
 
     if (validationError) {
       setError(validationError);
@@ -169,43 +193,22 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
           console.log("Create event payload:", eventFormData);
         }
       } else {
-        if (icsFile) {
-          if (!userId) {
-            setError("User ID not found. Please log in again.");
-            setIsSubmitting(false);
-            return;
-          }
-
-          const calendarClient = new CalendarClient();
-          const response = await calendarClient.ics_import({
-            file: icsFile,
-            calendar_name: calendarFormData.name,
-            user_id: userId,
-            date_start: calendarFormData.date_start || null,
-            date_end: calendarFormData.date_end || null,
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Failed to import calendar from ICS file:", errorText);
-            throw new Error("ICS import failed");
-          }
+        if (onSubmitCalendar) {
+          await onSubmitCalendar(calendarFormData);
         } else {
-          if (onSubmitCalendar) {
-            await onSubmitCalendar(calendarFormData);
-          } else {
-            console.log("Create calendar payload:", calendarFormData);
-          }
+          console.log("Create calendar payload:", calendarFormData);
         }
       }
 
       handleClose();
     } catch (err) {
+      console.error(err);
       setError(
         mode === "event"
           ? "Could not create event."
           : "Could not create calendar."
       );
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -222,9 +225,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
           </Button>
           <Button type="submit" form="create-dialog-form" disabled={isSubmitting}>
             {isSubmitting
-              ? mode === "event"
-                ? "Creating..."
-                : "Creating..."
+              ? "Creating..."
               : mode === "event"
               ? "Create Event"
               : "Create Calendar"}
@@ -281,7 +282,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
                     type="datetime-local"
                     value={eventFormData.start_time}
                     onChange={handleEventChange("start_time")}
-                    required={!eventFormData.start_time && !eventFormData.end_time}
+                    required
                   />
                 </Box>
 
@@ -291,7 +292,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
                     type="datetime-local"
                     value={eventFormData.end_time}
                     onChange={handleEventChange("end_time")}
-                    required={!eventFormData.start_time && !eventFormData.end_time}
+                    required
                   />
                 </Box>
               </Stack>
@@ -318,7 +319,10 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
                   Select a calendar
                 </MenuItem>
                 {calendars.map((calendar) => (
-                  <MenuItem key={calendar.calendar_id} value={calendar.calendar_id}>
+                  <MenuItem
+                    key={calendar.calendar_id}
+                    value={calendar.calendar_id}
+                  >
                     {calendar.calendar_name}
                   </MenuItem>
                 ))}
@@ -337,21 +341,13 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
                 onChange={handleCalendarChange("name")}
                 required
               />
-
-              <Input
-                type="file"
-                onChange={(e) => {
-                  const file = (e.target as HTMLInputElement).files?.[0] || null;
-                  setIcsFile(file);
-                }}
-              />
-
-              {error && (
-                <Typography variant="body2" color="error">
-                  {error}
-                </Typography>
-              )}
             </>
+          )}
+
+          {error && (
+            <Typography variant="body2" color="error">
+              {error}
+            </Typography>
           )}
         </Stack>
       </Box>

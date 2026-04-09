@@ -9,9 +9,12 @@ import type { DailyTimelineItem } from "../../Types/Calendar";
 import type { AiSuggestion } from "../../services/contracts";
 import { dataService } from "../../services";
 
-const PANEL_WIDTH = 300;
+const PANEL_WIDTH = 300; 
 
 // Maps optional category labels to icons.
+// Triangle Alert to alert user of travel times 
+// Lightbulb to give user tips 
+// Otherwise use info icon
 const categoryIcon = (category?: string) => {
   if (!category) return <Lightbulb size={14} />;
   const lower = category.toLowerCase();
@@ -20,6 +23,7 @@ const categoryIcon = (category?: string) => {
   return <Info size={14} />;
 };
 
+//
 type AiSuggestionCardProps = {
   suggestion: AiSuggestion;
 };
@@ -67,12 +71,14 @@ function AiSuggestionCard({ suggestion }: AiSuggestionCardProps) {
         variant="body2"
         sx={{ fontSize: "0.8125rem", lineHeight: 1.55, color: "text.primary" }}
       >
-        {suggestion.text}
+        <Box component="span" sx={{ fontWeight: 600 }}>
+          {suggestion.title}
+        </Box>
+        {suggestion.description ? ` — ${suggestion.description}` : ""}
       </Typography>
     </Box>
   );
 }
-
 type AiSuggestionsPanelProps = {
   date: Date;
   items: DailyTimelineItem[];

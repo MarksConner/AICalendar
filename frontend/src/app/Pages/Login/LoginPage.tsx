@@ -14,7 +14,7 @@ import {
 } from "../../design_system/components/ui/Card";
 import { Button } from "../../design_system/components/ui/Button";
 import { Input } from "../../design_system/components/ui/Input";
-import { dataService } from "../../services";
+import LoginClient  from "../../api_client/Auth";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -35,12 +35,20 @@ export const LoginPage = () => {
 
     setIsLoading(true);
     try {
-      const result = await dataService.login(email, password);
+      const api = new LoginClient();
+      const res = await api.login(email, password);
 
-      // For now, store the token in localStorage so other parts of the app
-      // (or future auth context) can read it.
-      localStorage.setItem("authToken", result.token);
-      localStorage.setItem("authEmail", result.user.email);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.message || "Login failed");
+      }
+
+      // We store the token in localStorage so other parts of the app can read it.
+      const data = await res.json();
+      localStorage.setItem("access_token", data.access_token);
+      localStorage.setItem("refresh_token", data.refresh_token);
+      localStorage.setItem("user_id", data.user_id);
+      localStorage.setItem("token_type", data.token_type);
 
       // Navigate to dashboard after successful login
       navigate("/");

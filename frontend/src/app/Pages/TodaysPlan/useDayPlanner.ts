@@ -541,66 +541,83 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   }, [selectedEvent, selectedEventId]);
 
   const handleAddTask = async () => {
-    const startMinutes = parseTimeToMinutes(newTime);
-    if (!newTitle.trim()) {
-      setAddTaskError("Title is required.");
-      return;
-    }
-    if (startMinutes === null) {
-      setAddTaskError("Time must use HH:MM (24h), for example 14:30.");
-      return;
-    }
+  console.log("HANDLE ADD TASK FIRED", { newTitle, newTime });
 
-    const normalizedStart = toISODateTime(
-      selectedDate,
-      minutesToTimeString(startMinutes)
-    );
-    const endMinutes = Math.min(startMinutes + DEFAULT_DURATION_MINUTES, HOURS_IN_DAY * 60 - 1);
-    const normalizedEnd = toISODateTime(selectedDate, minutesToTimeString(endMinutes));
+  const startMinutes = parseTimeToMinutes(newTime);
 
-    const tempId = `temp-${Date.now()}`;
-    const tempItem: DailyTimelineItem = {
-      id: tempId,
-      name: newTitle.trim(),
-      start: normalizedStart,
-      end: normalizedEnd,
-      description: newDescription.trim() || undefined,
-      priority: 0,
-      flexible: false,
-      travel_time_min: 0,
-    };
+  if (!newTitle.trim()) {
+    setAddTaskError("Title is required.");
+    return;
+  }
 
-    const targetDate = new Date(selectedDate);
-    const targetDateKey = targetDate.toDateString();
-    setIsCreatingEvent(true);
-    setAddTaskError(null);
-    setPersistError(null);
-    setItems((prev) => sortItemsByStart([...prev, tempItem]));
-    setIsAddOpen(false);
+  if (startMinutes === null) {
+    setAddTaskError("Time must use HH:MM (24h), for example 14:30.");
+    return;
+  }
 
-    try {
-      await dataService.createDayEvent(targetDate, {
-        name: tempItem.name,
-        start: tempItem.start,
-        end: tempItem.end,
-        description: tempItem.description,
-        priority: tempItem.priority,
-        flexible: tempItem.flexible,
-        travel_time_min: tempItem.travel_time_min,
-      });
-      const refreshed = await dataService.fetchDayTimeline(targetDate);
-      if (selectedDateKeyRef.current === targetDateKey) {
-        setItems(sortItemsByStart(refreshed));
-      }
-    } catch {
-      if (selectedDateKeyRef.current === targetDateKey) {
-        setItems((prev) => prev.filter((item) => item.id !== tempId));
-        setPersistError("Could not save the new event.");
-      }
-    } finally {
-      setIsCreatingEvent(false);
-    }
+  const normalizedStart = toISODateTime(
+    selectedDate,
+    minutesToTimeString(startMinutes)
+  );
+
+  const endMinutes = Math.min(
+    startMinutes + DEFAULT_DURATION_MINUTES,
+    HOURS_IN_DAY * 60 - 1
+  );
+
+  const normalizedEnd = toISODateTime(
+    selectedDate,
+    minutesToTimeString(endMinutes)
+  );
+
+  const tempId = `temp-${Date.now()}`;
+  const tempItem: DailyTimelineItem = {
+    id: tempId,
+    name: newTitle.trim(),
+    start: normalizedStart,
+    end: normalizedEnd,
+    description: newDescription.trim() || undefined,
+    priority: 0,
+    flexible: false,
+    travel_time_min: 0,
   };
+
+  const targetDate = new Date(selectedDate);
+  const targetDateKey = targetDate.toDateString();
+
+  setIsCreatingEvent(true);
+  setAddTaskError(null);
+  setPersistError(null);
+  setItems((prev) => sortItemsByStart([...prev, tempItem]));
+  setIsAddOpen(false);
+
+  try {
+    await dataService.createDayEvent(targetDate, {
+      name: tempItem.name,
+      start: tempItem.start,
+      end: tempItem.end,
+      description: tempItem.description,
+      priority: tempItem.priority,
+      flexible: tempItem.flexible,
+      travel_time_min: tempItem.travel_time_min,
+    });
+
+    const refreshed = await dataService.fetchDayTimeline(targetDate);
+
+    if (selectedDateKeyRef.current === targetDateKey) {
+      setItems(sortItemsByStart(refreshed));
+    }
+  } catch (error) {
+    console.error("ADD TASK ERROR", error);
+
+    if (selectedDateKeyRef.current === targetDateKey) {
+      setItems((prev) => prev.filter((item) => item.id !== tempId));
+      setPersistError("Could not save the new event.");
+    }
+  } finally {
+    setIsCreatingEvent(false);
+  }
+};
 
   return {
     addTaskError,

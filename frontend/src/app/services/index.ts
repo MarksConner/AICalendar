@@ -36,6 +36,10 @@ export const DATA_SOURCE = readDataSource();
 export const dataService: AppDataService =
   DATA_SOURCE === "api" ? httpDataService : mockDataService;
 
+console.log("VITE_DATA_SOURCE =", import.meta.env.VITE_DATA_SOURCE);
+console.log("dataService =", dataService);
+console.log("DATA_SOURCE =", DATA_SOURCE);
+
 export type {
   AppDataService,
   CreateDayEventInput,

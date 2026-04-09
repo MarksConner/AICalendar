@@ -7,6 +7,7 @@ export interface LoginPayload {
 
 export interface LoginResponseBody {
   access_token: string;
+  refresh_token: string;
   user_id: string;
   token_type: string; 
 }
@@ -93,4 +94,14 @@ export default class LoginClient{
       },
     });
   }
+
+  async refresh(refreshToken: string): Promise<Response> {
+  return this.request({
+    method: "POST",
+    url: "/users/refresh",
+    body: { refresh_token: refreshToken },
+  });
+  }
+  
 }
+

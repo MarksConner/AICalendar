@@ -88,5 +88,30 @@ export default class CalendarClient {
             url: `/events/calendar/${calendar_id}/day/${date}`,
         });
     }
-    
+// Takes a file object, calendar name, user id, and optional date range, and sends a POST request to the backend to import events from the ICS file into the specified calendar.   
+    async ics_import({file, calendar_name, user_id,date_start, date_end,}: {file: File; calendar_name: string; user_id: string; date_start?: string | null;date_end?: string | null;
+    }): Promise<Response> {
+    const token = localStorage.getItem("access_token");
+    const formData = new FormData();
+
+    formData.append("file", file); // backend expects "file"
+    formData.append("calendar_name", calendar_name); // backend expects "calendar_name"
+    formData.append("user_id", user_id); // backend expects "user_id"
+
+    if (date_start) {
+        formData.append("date_start", date_start);
+    }
+
+    if (date_end) {
+        formData.append("date_end", date_end);
+    }
+
+    return fetch(this.base_url + "/calendar/import-ics", {
+        method: "POST",
+        headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+    });
+    }   
 }

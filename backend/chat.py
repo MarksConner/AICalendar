@@ -29,7 +29,6 @@ class UserMessage(BaseModel):
 
 @router.post("")
 def chat(data: UserMessage):
-    #Giving the agent more context PREFERENCES SHOULD BE IMPORTED, THIS IS TEMPORARY
     calendar_context = get_calendar_context(session, data.calendar_id) # Luis- changed this to connect database context to LLM 
 
     #ask the LLM
@@ -146,3 +145,4 @@ def chat(data: UserMessage):
 
     else:
         return {"response": "I didn't understand that, can you rephrase?"}
+    

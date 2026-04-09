@@ -97,7 +97,8 @@ export interface DaySchedulingHints {
 /** A single LLM-generated suggestion item. All text comes from the backend — never hardcode it here. */
 export interface AiSuggestion {
   id: string;
-  text: string;         // LLM-generated body — rendered as-is in the UI
+  title: string;        // Short title, e.g. "Leave 30 min earlier to beat traffic"
+  description: string;  // Longer explanation of the suggestion
   category?: string;    // Optional label e.g. "Tip", "Schedule Insight", "Travel Alert"
 }
 

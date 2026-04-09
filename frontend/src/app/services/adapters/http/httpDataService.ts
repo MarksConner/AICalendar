@@ -1,12 +1,5 @@
 /**
  * Real backend adapter — this is the file to edit when connecting a new FastAPI endpoint.
- *
- * Each method maps to one API route. To add a new endpoint:
- *   1. Add the method signature to AppDataService in contracts.ts.
- *   2. Implement it here using requestJson() — auth and base URL are handled automatically.
- *   3. If the backend response shape differs from the frontend type, add a normalizer function
- *      (see normalizeAuthResponse and normalizeTimelineItem below as examples).
- *   4. Add a matching stub in mockDataService.ts.
  */
 import type { CalendarEvent, DailyTimelineItem } from "../../../Types/Calendar";
 import type {
@@ -29,14 +22,8 @@ const toDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-// ── Auth normalization ────────────────────────────────────────────────────────
-// Normalizers convert the raw backend JSON into the typed frontend shape.
-// They also handle field name variations (e.g. "id" vs "user_id") so the
-// UI keeps working across different backend response formats.
-
 type RawAuthUser = {
   user_id?: string;
-  // Legacy id field — some older responses use plain "id"
   id?: string;
   email?: string;
   username?: string;
@@ -50,7 +37,6 @@ type RawLoginResponse = {
   token?: string;
   access_token?: string;
   user?: RawAuthUser;
-  // Some backends flatten user fields to the top level
   user_id?: string;
   email?: string;
   username?: string;
@@ -60,6 +46,7 @@ type RawLoginResponse = {
 const normalizeAuthResponse = (raw: RawLoginResponse): LoginResponse => {
   const token = raw.token ?? raw.access_token;
   if (!token) throw new Error(raw.message ?? "Missing token in login response.");
+
   const u = raw.user ?? {};
   return {
     token,
@@ -75,107 +62,74 @@ const normalizeAuthResponse = (raw: RawLoginResponse): LoginResponse => {
   };
 };
 
-// ── Event normalization ───────────────────────────────────────────────────────
+type RawCalendar = {
+  calendar_id?: string;
+  id?: string;
+  calendar_name?: string;
+};
 
-/**
- * Raw event shape from the backend — accepts both the new field names and
- * legacy snake_case / camelCase variants so the frontend keeps working during
- * the backend migration window.
- */
 type RawDayEvent = {
   id?: string;
-  // name — primary; fall back to legacy title / event_name
+  event_id?: string;
   name?: string;
   event_name?: string;
   title?: string;
-  // ISO datetimes (new backend) or legacy HH:MM strings
   start?: string;
   end?: string;
   startTime?: string;
   start_time?: string;
   endTime?: string;
   end_time?: string;
-  // optional fields
   description?: string;
+  event_description?: string;
   priority?: number;
+  priority_rank?: number;
   location?: string | null;
+  full_address?: string | null;
   flexible?: boolean;
   travel_time_min?: number;
 };
 
 const normalizeTimelineItem = (raw: RawDayEvent): DailyTimelineItem => {
-  if (!raw.id) throw new Error("Missing event id from timeline response.");
+  const id = raw.id ?? raw.event_id;
+  if (!id) throw new Error("Missing event id from timeline response.");
 
   const name = raw.name ?? raw.event_name ?? raw.title;
   const start = raw.start ?? raw.startTime ?? raw.start_time;
   const end = raw.end ?? raw.endTime ?? raw.end_time;
 
-  if (!name || !start) throw new Error("Invalid timeline item received from server.");
+  if (!name || !start) {
+    throw new Error("Invalid timeline item received from server.");
+  }
 
   return {
-    id: raw.id,
+    id,
     name,
     start,
     end: end ?? start,
-    description: raw.description,
-    priority: raw.priority ?? 0,
-    location: raw.location ?? null,
+    description: raw.description ?? raw.event_description,
+    priority: raw.priority ?? raw.priority_rank ?? 0,
+    location: raw.location ?? raw.full_address ?? null,
     flexible: raw.flexible ?? false,
     travel_time_min: raw.travel_time_min ?? 0,
   };
 };
 
-/**
- * Builds the create-event request body.
- * Sends both the new field names and legacy aliases (title, startTime, etc.) during the
- * backend migration window. Once the backend is fully updated, the legacy aliases can be removed.
- */
-const buildEventPayload = (input: CreateDayEventInput, date: string) => ({
-  date,
-  name: input.name,
-  start: input.start,
-  end: input.end,
-  priority: input.priority ?? 0,
-  location: input.location ?? null,
-  flexible: input.flexible ?? false,
-  travel_time_min: input.travel_time_min ?? 0,
-  description: input.description,
-  // Legacy aliases for backward compat
-  event_name: input.name,
-  title: input.name,
-  startTime: input.start,
-  start_time: input.start,
-  endTime: input.end,
-  end_time: input.end,
-});
+export const getPrimaryCalendarId = async (): Promise<string> => {
+  const calendars = await requestJson<RawCalendar[]>("/calendar"); // This is the endpoint to fetch the user's calendars. We assume the first one is the primary calendar.
+  const calendarId = calendars?.[0]?.calendar_id ?? calendars?.[0]?.id;
 
-const buildEventPatchPayload = (date: string, updates: UpdateDayEventInput) => ({
-  date,
-  ...(updates.name !== undefined
-    ? { name: updates.name, event_name: updates.name, title: updates.name }
-    : {}),
-  ...(updates.start !== undefined
-    ? { start: updates.start, startTime: updates.start, start_time: updates.start }
-    : {}),
-  ...(updates.end !== undefined
-    ? { end: updates.end, endTime: updates.end, end_time: updates.end }
-    : {}),
-  ...(updates.description !== undefined ? { description: updates.description } : {}),
-  ...(updates.priority !== undefined ? { priority: updates.priority } : {}),
-  ...(updates.location !== undefined ? { location: updates.location } : {}),
-  ...(updates.flexible !== undefined ? { flexible: updates.flexible } : {}),
-  ...(updates.travel_time_min !== undefined
-    ? { travel_time_min: updates.travel_time_min }
-    : {}),
-});
+  if (!calendarId) {
+    throw new Error("No calendar found for current user.");
+  }
 
-// ── User create normalization ─────────────────────────────────────────────────
+  return calendarId;
+};
 
 const normalizeUserCreateResponse = (raw: unknown): CreateUserResult => {
   if (!raw || typeof raw !== "object") return {};
   const r = raw as Record<string, unknown>;
 
-  // Backend may return the full user object nested or flattened.
   const userSource = (r.user as Record<string, unknown> | undefined) ?? r;
 
   const user = {
@@ -194,11 +148,9 @@ const normalizeUserCreateResponse = (raw: unknown): CreateUserResult => {
   };
 };
 
-// ── Service implementation ────────────────────────────────────────────────────
-
 export const httpDataService: AppDataService = {
   login(email, password) {
-    return requestJson<RawLoginResponse>("/auth/login", {
+    return requestJson<RawLoginResponse>("/users/login", {
       method: "POST",
       body: { email, password },
     }).then(normalizeAuthResponse);
@@ -223,16 +175,21 @@ export const httpDataService: AppDataService = {
     });
   },
 
-  fetchDayTimeline(date) {
-    return requestJson<RawDayEvent[]>("/calendar/day-timeline", {
-      query: { date: toDateKey(date) },
-    }).then((events) => events.map(normalizeTimelineItem));
+  async fetchDayTimeline(date) {
+    const calendarId = await getPrimaryCalendarId();
+    const events = await requestJson<RawDayEvent[]>(
+      `/events/calendar/${calendarId}/day/${toDateKey(date)}`
+    );
+    return events.map(normalizeTimelineItem);
   },
 
-  getDaySchedulingHints(date, request: DaySchedulingHintsRequest) {
+// Day hints  needs date, and calendar_id to determine working hours and conflicts, but we don't want to force the caller to know about calendar IDs, so we just fetch the primary calendar ID internally here.
+  async getDaySchedulingHints(date, request: DaySchedulingHintsRequest) {
+    const calendarId = await getPrimaryCalendarId();
     return requestJson<DaySchedulingHints>("/calendar/day-hints", {
       query: {
         date: toDateKey(date),
+        calendar_id: calendarId,
         startTime: request.startTime,
         endTime: request.endTime,
         durationMinutes: request.durationMinutes,
@@ -240,33 +197,58 @@ export const httpDataService: AppDataService = {
     });
   },
 
-  createDayEvent(date, input: CreateDayEventInput) {
-    return requestJson<RawDayEvent>("/calendar/day-events", {
+  async createDayEvent(_date, input: CreateDayEventInput) {
+    const calendarId = await getPrimaryCalendarId();
+
+    return requestJson<RawDayEvent>("/events/create", {
       method: "POST",
-      body: buildEventPayload(input, toDateKey(date)),
+      body: {
+        calendar_id: calendarId,
+        event_name: input.name,
+        start_time: input.start,
+        end_time: input.end,
+        event_description: input.description ?? null,
+        full_address: input.location ?? null,
+        priority_rank: input.priority ?? 0,
+      },
     }).then(normalizeTimelineItem);
   },
 
-  updateDayEvent(date, eventId, updates: UpdateDayEventInput) {
-    return requestJson<RawDayEvent>(`/calendar/day-events/${eventId}`, {
-      method: "PATCH",
-      body: buildEventPatchPayload(toDateKey(date), updates),
+  async updateDayEvent(_date, eventId, updates: UpdateDayEventInput) {
+    return requestJson<RawDayEvent>(`/events/update/${eventId}`, {
+      method: "PUT",
+      body: {
+        ...(updates.name !== undefined ? { event_name: updates.name } : {}),
+        ...(updates.start !== undefined ? { start_time: updates.start } : {}),
+        ...(updates.end !== undefined ? { end_time: updates.end } : {}),
+        ...(updates.description !== undefined
+          ? { event_description: updates.description }
+          : {}),
+        ...(updates.location !== undefined ? { full_address: updates.location } : {}),
+        ...(updates.priority !== undefined ? { priority_rank: updates.priority } : {}),
+      },
     }).then(normalizeTimelineItem);
   },
 
-  deleteDayEvent(date, eventId) {
-    return requestJson<void>(`/calendar/day-events/${eventId}`, {
+  deleteDayEvent(_date, eventId) {
+    return requestJson<void>(`/events/delete/${eventId}`, {
       method: "DELETE",
-      query: { date: toDateKey(date) },
     });
   },
 
-  getDayAiSuggestions(date, items) {
+
+  getDayAiSuggestions(date, items: DailyTimelineItem[]) {
     return requestJson<AiSuggestionsResponse>("/ai/day-suggestions", {
       method: "POST",
       body: {
         date: toDateKey(date),
-        events: items,
+        events: (items ?? []).map((item) => ({
+          title: item.name ?? "",
+          startTime: item.start ?? null,
+          endTime: item.end ?? null,
+          location: item.location ?? null,
+          description: item.description ?? null,
+        })),
       },
     });
   },

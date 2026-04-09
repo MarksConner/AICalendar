@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { Button } from "../design_system/components/ui/Button";
 import { Input } from "../design_system/components/ui/Input";
+import ChatClient from "../api_client/ChatClient";
+
+
 
 type ChatMessage = {
   id: string;
@@ -23,6 +26,10 @@ const initialMessages: ChatMessage[] = [
 export const AiChatPanel = () => {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [draft, setDraft] = useState("");
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const chatClient = useMemo(() => new ChatClient(), []); // Memoize ChatClient instance to avoid unnecessary re-instantiations on re-renders
+  
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -33,6 +40,76 @@ export const AiChatPanel = () => {
       { id: Date.now().toString(), role: "user", text: trimmed },
     ]);
     setDraft("");
+    setIsLoading(true);
+
+// Helper function for now to add assistant messages to the chat, we can call this after receiving a response from the API in the future.
+  const addAssistantMessage = (text: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        text,
+      },
+    ]);
+  };
+
+    if(!chatId){ // If no chatId, create a new chat with the first message
+      chatClient.createChatAPI(trimmed).then(async (response) => {
+        if (response.ok) {
+          const data = await response.json();
+          console.log("createChatAPI data:", data);
+          setChatId(data.chat_id); // Store the chatId for future messages
+
+          const calendarId = localStorage.getItem("calendar_id");
+          // Null check.
+          if (!calendarId) {
+            addAssistantMessage("No calendar selected.");
+            setIsLoading(false);
+            return;
+          }
+          const aiResponse = await chatClient.askAI(trimmed, calendarId);
+          
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            console.log("askAI data:", aiData);
+            addAssistantMessage(aiData.response); // Add the AI's response to the chat
+          } else {
+            // Handle error for askAI
+          }
+        } else {
+          // Handle error for createChatAPI
+        }
+        setIsLoading(false);
+      });
+    } else { // If chatId exists, send message to existing chat
+      chatClient.sendMessageAPI(chatId, trimmed).then(async (response) => {
+        if (response.ok) {
+          const data = await response.json();
+          console.log("sendMessageAPI data:", data);
+           const calendarId = localStorage.getItem("calendar_id");
+          // Null check.-- Duplicated code probably could refactor
+          if (!calendarId) {
+            addAssistantMessage("No calendar selected.");
+            setIsLoading(false);
+            return;
+          }
+          //--------------------
+          const aiResponse = await chatClient.askAI(trimmed, calendarId); // This is currently not interacting with the database.
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            console.log("askAI data:", aiData);
+            addAssistantMessage(aiData.response); // Add the AI's response to the chat
+          } else {
+            // Handle error for askAI
+          }
+        } else {
+          // Handle error for sendMessageAPI
+        }
+        setIsLoading(false);
+      });
+
+    }
   };
 
   return (

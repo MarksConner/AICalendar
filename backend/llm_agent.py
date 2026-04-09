@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import json
 from typing import Optional, Dict, Any
@@ -14,11 +15,16 @@ except Exception:
     pass
 
 
+
+
 def ask_llm(
     message: str,
     *,
     calendar_context: Optional[Dict[str, Any]] = None
 ) -> str:
+        
+    now = datetime.now()
+    current_time_text = now.strftime("%Y-%m-%d %H:%M:%S")
     """
     Sends the user message and optional calendar context to the LLM.
     Returns a JSON string that the API layer will parse.
@@ -39,7 +45,7 @@ def ask_llm(
 
     system_prompt = """
 You are an intelligent calendar scheduling assistant.
-
+Current time: """ + current_time_text + """
 You MUST respond in valid JSON format.
 
 Supported intents:
