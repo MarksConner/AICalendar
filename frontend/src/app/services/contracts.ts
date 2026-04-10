@@ -52,7 +52,7 @@ export interface CreateDayEventInput {
 export type UpdateDayEventInput = Partial<
   Pick<
     DailyTimelineItem,
-    "name" | "start" | "end" | "description" | "priority" | "location" | "flexible" | "travel_time_min"
+    "name" | "start" | "end" | "description" | "priority" | "location" |  "travel_time_min"
   >
 >;
 

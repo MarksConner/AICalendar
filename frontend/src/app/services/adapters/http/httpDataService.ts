@@ -221,9 +221,7 @@ export const httpDataService: AppDataService = {
         ...(updates.name !== undefined ? { event_name: updates.name } : {}),
         ...(updates.start !== undefined ? { start_time: updates.start } : {}),
         ...(updates.end !== undefined ? { end_time: updates.end } : {}),
-        ...(updates.description !== undefined
-          ? { event_description: updates.description }
-          : {}),
+        ...(updates.description !== undefined? { event_description: updates.description }: {}),
         ...(updates.location !== undefined ? { full_address: updates.location } : {}),
         ...(updates.priority !== undefined ? { priority_rank: updates.priority } : {}),
       },

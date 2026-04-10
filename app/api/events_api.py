@@ -1,6 +1,6 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.base_model_classes import EventCreate
+from app.api.base_model_classes import EventCreate, EventUpdate
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.services.events_service import  create_event, get_events_for_calendar_day,update_event,detect_event_conflicts, add_event_participant, get_event_by_id, remove_event, remove_event_participant
@@ -38,12 +38,22 @@ def get_events_for_calendar_day_route(calendar_id: UUID, day: datetime, db: Sess
 
 
 @router.put("/update/{event_id}")
-def update_event_route(event_id: UUID, event: EventCreate, db: Session = Depends(get_db)):
-    event = get_event_by_id(db, event_id)
-    check = update_event(db, event_id, event)
-    if check == False:
+def update_event_route(event_id: UUID, event: EventUpdate, db: Session = Depends(get_db)):
+    updated = update_event(
+        db=db,
+        event_id=event_id,
+        event_name=event.event_name,
+        start_time=event.start_time,
+        end_time=event.end_time,
+        priority_rank=event.priority_rank,
+        description=event.event_description,
+        full_address=event.full_address,
+    )
+
+    if not updated:
         raise HTTPException(status_code=404, detail="Event not found")
-    return {"message": "Event updated successfully"}
+
+    return get_event_by_id(db, event_id)
 
 @router.delete("/delete/{event_id}")
 def delete_event_route(event_id: UUID, db: Session = Depends(get_db)):

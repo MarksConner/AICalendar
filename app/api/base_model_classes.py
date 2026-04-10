@@ -61,6 +61,13 @@ class EventCreate(BaseModel):
     start_time: datetime
     end_time: Optional[datetime] = None
 
+class EventUpdate(BaseModel):
+    event_name: Optional[str] = None
+    event_description: Optional[str] = None
+    full_address: Optional[str] = None
+    priority_rank: Optional[int] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
 
 class EventRead(EventCreate):
     event_id: UUID
