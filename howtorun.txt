@@ -1,0 +1,70 @@
+## Here's how to get the web app up and running in dev mode in case you're on a fresh clone and can't
+    remember or haven't done it yet. 
+    I used a virtual environemnt using python, you're free to do it without this but I will include 
+    it just in case. -BB ##
+
+1. Prerequisites (Make sure you have these before you do anything else):
+    -python3 installed needs to be version 3.13 or higher
+    -node.js (you might already have this use command node --version to check, if not just follow their 
+    website.)
+
+2. Make sure you in the project directory
+
+3. Set up the Python Virutal Environment: 
+    use commands: python3 -m venv venv
+    then: source venv/bin/activate
+    These are MacOS terminal commands, if you're on windows you will likely have to double check and make 
+    sure to use the correct commands for your machine.
+
+4. Ensure you have dependencies installed (IMPORTANT):
+    You can make sure you have all needed dependencies with the following python command:
+pip install fastapi uvicorn sqlalchemy psycopg2-binary pydantic-settings \
+  openai python-jose[cryptography] bcrypt fastapi-mail icalendar requests \
+  python-dotenv pytest httpx PyJWT python-multipart
+
+5. Create the .env file:
+    in the main project folder (make sure it's not in backend or frontend or any other folders):
+    make a file just called '.env' and paste the following:
+    Please get the keys from Luis here, but there will be keys pasted into the .env file.
+
+    THEN be sure in the frontend folder to edit the '.env.local' file and paste this:
+    VITE_DATA_SOURCE=api
+    VITE_BASE_API_URL=http://127.0.0.1:8000
+
+    if for whatever reason you want to go back to the mock data I made for dev purposes, change '=api' to '=mock'
+
+6. Setting up the frontend:
+    run the following commands to set up the frontend:
+        cd frontend (should take you to the frontend folder in the project)
+        chmod +x node_modules/.bin/* (Only use this command if you get permission denied errors)
+        npm install
+        npm run dev 
+        you will then get a website local host link, paste that in your browser and it should load if successful
+
+7. Setting up both backend and frontend to work together:
+    For the BACKEND:
+        run the following commands:
+            cd P4_DEMO (this may change later, whatever the project main folder is called)
+            source venv/bin/activate (this launches the virtual environment we made earlier)
+            uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+        A successful launch here should give the following output:
+        INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+        INFO:     Started reloader process [22430] using StatReload
+        INFO:     Started server process [22432]
+        INFO:     Waiting for application startup.
+        INFO:     Application startup complete.
+        If you do not get this, something went wrong and you will need to troubleshoot, more than 
+        likely a module was not installed correctly. 
+    
+    For the FRONTEND:
+    cd frontend (make sure you're in frontend folder)
+    npm run dev 
+
+    A successful launch here should give the following output:
+      VITE v7.3.1  ready in 206 ms
+
+  ➜  Local:   http://localhost:5173/
+
+    if you do not get this output something went wrong and you will need to troubleshoot. 
+
+Hope this helps!
