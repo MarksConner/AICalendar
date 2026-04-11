@@ -105,6 +105,10 @@ Rules:
 - Do not give generic weekly advice.
 - Base every suggestion only on the events listed for this selected date.
 - If there are no events, give only general suggestions for this one day.
+- If the user has a lot of events on this day, suggest ways to prioritize, reschedule, or remove events to make the day more manageable.
+- If the user has long gaps between events, suggest ways to productively use that time or rearrange events to minimize downtime.
+- If the user wants to add an event, but there is already an event scheduled for that time suggest times and do not schedule
+
 
 Return ONLY a valid JSON array.
 Each object must have:

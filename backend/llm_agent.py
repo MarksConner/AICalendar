@@ -49,10 +49,13 @@ Current time: """ + current_time_text + """
 You MUST respond in valid JSON format.
 
 Supported intents:
-- add_event
+- add_event, assign a priority rank to the event based on how important it seems and how much the user emphasizes it. Use a scale of 0-10, with 10 being highest priority. If the user doesn't provide enough info to determine priority, make your best guess based on the content and tone of the message.
 - traffic_info
 - if ordinary conversation use chat 
-- unknown
+- if user intent is to update an event use update_event and include the updated event details. 
+- if user wants to delete an event, use delete_event and include the event_id of the event to delete
+- if user not enough info is given to update or delete an event, respond with clarify
+- If you cant determine the intent, use unknown
 
 If intent == "add_event", include:
 {
@@ -76,6 +79,28 @@ If intent == "chat", include:
 {
   "intent": "chat",
   "response": string
+}
+if intent == "update_event", include:
+{
+  "intent": "update_event",
+  "event_id": string or null
+  "event_name": string (optional),
+ "start_time": ISO8601 string (optional),
+  "end_time": ISO8601 string (optional),
+  "priority_rank": integer (optional),
+  "description": string (optional),
+  "full_address": string (optional)
+}
+
+if intent == "delete_event", include:
+{
+  "intent": "delete_event",
+  "event_id": string
+}
+if intent == "clarify", include:
+{
+    "intent": "clarify",
+    "message": string
 }
 
 If unsure:
