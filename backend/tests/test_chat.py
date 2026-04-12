@@ -99,3 +99,4 @@ def test_chat_invalid_llm_json(client, monkeypatch):
     body = resp.json()
     assert "Invalid JSON" in body["error"]
     assert "raw" in body
+

@@ -1,8 +1,10 @@
+
+
 from app.db import SessionLocal
 from app.models.events import Events
 from app.models.event_participants import EventParticipants
 from sqlalchemy import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 
@@ -27,7 +29,19 @@ def get_events_for_calendar_day(db: Session, calendar_id: UUID, day: datetime) -
     events = (db.query(Events).filter(Events.calendar_id == calendar_id).filter(Events.start_time >= start_of_day).filter(Events.start_time <= end_of_day).all())
     return events
 
+# new function to get events for a calendar month, used for calendar month view
 
+def get_events_for_calendar_month(db: Session,calendar_id: UUID,year: int,month: int) -> list[Events]:
+    start_of_month = datetime(year, month, 1)
+
+    if month == 12:
+        start_of_next_month = datetime(year + 1, 1, 1)
+    else:
+        start_of_next_month = datetime(year, month + 1, 1)
+
+    events = (db.query(Events).filter(Events.calendar_id == calendar_id).filter(Events.start_time < start_of_next_month).filter(Events.end_time > start_of_month).all())
+
+    return events
 
 def update_event(db: Session,event_id: UUID,event_name: str | None = None,start_time: datetime | None = None,end_time: datetime | None = None,priority_rank: int | None = None,description: str | None = None,
     full_address: str | None = None,

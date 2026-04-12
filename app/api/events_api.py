@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.base_model_classes import EventCreate, EventUpdate
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
-from app.services.events_service import  create_event, get_events_for_calendar_day,update_event,detect_event_conflicts, add_event_participant, get_event_by_id, remove_event, remove_event_participant
+from app.services.events_service import  create_event, get_events_for_calendar_day, get_events_for_calendar_month,update_event,detect_event_conflicts, add_event_participant, get_event_by_id, remove_event, remove_event_participant
 from datetime import datetime, timezone
 
 
@@ -36,6 +36,11 @@ def get_events_for_calendar_day_route(calendar_id: UUID, day: datetime, db: Sess
     events = get_events_for_calendar_day(db, calendar_id, day)
     return events
 
+# This functions needs to match the query parameters sent by the frontend when it requests events for the month view, which are year and monthIndex (0-11). The function should convert monthIndex to month (1-12) and then call get_events_for_calendar_month with the correct parameters. The route should be a GET request to /calendar/{calendar_id}/events with query parameters year and monthIndex.
+@router.get("/calendar/{calendar_id}/events")
+def get_events_for_calendar_month_route(calendar_id: UUID, year: int, monthIndex: int,db: Session = Depends(get_db)):
+    month = monthIndex + 1
+    return get_events_for_calendar_month(db, calendar_id, year, month)
 
 @router.put("/update/{event_id}")
 def update_event_route(event_id: UUID, event: EventUpdate, db: Session = Depends(get_db)):

@@ -185,25 +185,37 @@ export const CalendarSidebar = () => {
           My calendars
         </Typography>
         <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
-          {calendars.map((calendar) => (
-            <Box
-              key={calendar.calendar_id}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 0.5,
-              }}
-            >
-              <Checkbox
-                size="small"
-                checked={selectedCalendarId === calendar.calendar_id}
-                onChange={() => handleToggleCalendar(calendar.calendar_id)}
-                sx={{ p: 0.5 }}
-              />
-              <Typography variant="body2">{calendar.calendar_name}</Typography>
-            </Box>
-          ))}
+            {calendars.map((calendar) => {const isSelected = selectedCalendarId === calendar.calendar_id;
+            return (
+              <ListItemButton
+                key={calendar.calendar_id}
+                onClick={() => handleToggleCalendar(calendar.calendar_id)}
+                selected={isSelected}
+                disableRipple
+                sx={{
+                  borderRadius: 1,
+                  px: 1.25,
+                  py: 0.9,
+                  fontSize: "0.875rem",
+                  color: "text.secondary",
+                  "&.Mui-selected": {
+                    bgcolor: "action.selected",
+                    color: "text.primary",
+                    fontWeight: 600,
+                  },
+                  "&.Mui-selected:hover": {
+                    bgcolor: "action.selected",
+                  },
+                  "&:hover": {
+                    bgcolor: "action.hover",
+                    color: "text.primary",
+                  },
+                }}
+              >
+                <Typography variant="body2">{calendar.calendar_name}</Typography>
+              </ListItemButton>
+            );
+          })}
         </Box>
       </Box>
 

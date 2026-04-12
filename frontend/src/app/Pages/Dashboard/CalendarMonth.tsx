@@ -36,7 +36,9 @@ export function CalendarMonth({ year, month, events = [], onDayClick }: Calendar
     const dayEvents =
       dateKey === null
         ? []
-        : events.filter((evt) => evt.start.startsWith(dateKey)).slice(0, 3);
+        : events
+            .filter((evt) => typeof evt?.start === "string" && evt.start.startsWith(dateKey))
+            .slice(0, 3);
 
     const isToday =
       inCurrentMonth &&

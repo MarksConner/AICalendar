@@ -115,14 +115,20 @@ const normalizeTimelineItem = (raw: RawDayEvent): DailyTimelineItem => {
   };
 };
 
+let cachedPrimaryCalendarId: string | null = null; // cache the primary calendar ID to avoid redundant API calls, since most users will only have one calendar and the ID won't change during a session.
+
+// Fetches the primary calendar ID for the current user. Caches the result for future calls.
 export const getPrimaryCalendarId = async (): Promise<string> => {
-  const calendars = await requestJson<RawCalendar[]>("/calendar"); // This is the endpoint to fetch the user's calendars. We assume the first one is the primary calendar.
+  if (cachedPrimaryCalendarId) return cachedPrimaryCalendarId;
+
+  const calendars = await requestJson<RawCalendar[]>("/calendar");
   const calendarId = calendars?.[0]?.calendar_id ?? calendars?.[0]?.id;
 
   if (!calendarId) {
     throw new Error("No calendar found for current user.");
   }
 
+  cachedPrimaryCalendarId = calendarId;
   return calendarId;
 };
 
@@ -169,10 +175,16 @@ export const httpDataService: AppDataService = {
     }).then(normalizeUserCreateResponse);
   },
 
-  fetchMonthEvents(year, monthIndex) {
-    return requestJson<CalendarEvent[]>("/calendar/events", {
-      query: { year, monthIndex, month: monthIndex + 1 },
-    });
+  async fetchMonthEvents(year, monthIndex) {
+    const calendarId = await getPrimaryCalendarId();
+    const events = await requestJson<RawDayEvent[]>(
+      `/events/calendar/${calendarId}/events`,
+      {
+        query: { year, monthIndex },
+      }
+    );
+
+    return events.map(normalizeTimelineItem);
   },
 
   async fetchDayTimeline(date) {
