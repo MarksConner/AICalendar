@@ -12,8 +12,13 @@ import type {
   DaySchedulingHintsRequest,
   LoginResponse,
   UpdateDayEventInput,
+  AddEventParticipantInput,
+  ParticipantsForEvent,
+  EventParticipant 
 } from "../../contracts";
+import {startMicrophoneInput, stopMicrophoneInput,} from "../../tts/mic_parsing";
 import { requestJson } from "./httpClient";
+
 
 const toDateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -244,6 +249,46 @@ export const httpDataService: AppDataService = {
     return requestJson<void>(`/events/delete/${eventId}`, {
       method: "DELETE",
     });
+  },
+  //Event Participants functions
+  addEventParticipant(eventId: string, input: AddEventParticipantInput) {
+    return requestJson<EventParticipant>(`/events/add_participant/${eventId}`, {
+      method: "POST",
+      body: {
+        name: input.name,
+        info: input.info ?? null,
+        role: input.role ?? null,
+      },
+    });
+  },
+
+  removeEventParticipant(participantId: string) {
+    return requestJson<void>(`/events/remove_participant/${participantId}`, {
+      method: "DELETE",
+    });
+  },
+
+  getParticipantsForEvent(eventId: string) {
+    return requestJson<ParticipantsForEvent>(`/events/participants_for_event/${eventId}`);
+  },
+
+  getParticipantInfo(participantId: string) {
+    return requestJson<EventParticipant>(`/events/participant_info/${participantId}`);
+  },
+
+  getEventsForParticipant(participantName: string) {
+    return requestJson<CalendarEvent[]>(
+      `/events/events_for_participant/${encodeURIComponent(participantName)}`
+    );
+  },
+
+  //Microphone transcription methods simply call through to the mic_parsing module, since all the logic for handling microphone access and transcription is contained there and doesn't involve any server communication. This keeps the AppDataService interface consistent while allowing the mic parsing logic to be easily maintained and updated separately.
+  async startMicrophoneTranscription(): Promise<string | null> {
+    return startMicrophoneInput();
+  },
+
+  stopMicrophoneTranscription(): void {
+    stopMicrophoneInput();
   },
 
 

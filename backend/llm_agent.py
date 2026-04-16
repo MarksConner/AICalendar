@@ -54,6 +54,8 @@ Supported intents:
 - if ordinary conversation use chat 
 - if user intent is to update an event use update_event and include the updated event details. 
 - if user wants to delete an event, use delete_event and include the event_id of the event to delete
+- if user wants to add event participants use add_participants
+    - participants info can include preferences, contact details, or any relevant information about the participant that might be useful for scheduling or communication purposes. it can be a combination of things
 - if user not enough info is given to update or delete an event, respond with clarify
 - If you cant determine the intent, use unknown
 
@@ -67,6 +69,10 @@ If intent == "add_event", include:
   "duration_minutes": integer,
   "location": string OR null,
   "flexible": boolean
+  "participants": [
+    { "name": "Luis", "info": "string", "role": "guest" },
+    { "name": "Ana", "info": "string", "role": "guest" }
+  ]
 }
 
 If intent == "traffic_info", include:
@@ -97,6 +103,30 @@ if intent == "delete_event", include:
   "intent": "delete_event",
   "event_id": string
 }
+
+if intent == "add_participants"{
+    "intent": "add_participant
+    "event_id": "uuid-or-null"
+    "participant_name": "anyname"
+    "participant_info: "example@example.com or favorite colours, or early arrival preferences, or anything else that might be relevant for the participant"
+    "participant_role": "optional string like 'attendee', 'speaker', 'organizer', etc"
+}
+
+if intent = "remove_participant"{ 
+    "intent": "remove_participant", 
+    "participant_id": "uuid" 
+}
+
+if intent = "list_participants{ 
+    "intent": "list_participants", 
+    "event_id": "uuid" 
+}
+
+if intent = "get_participant_info"{ 
+    "intent": "get_participant_info", 
+    "participant_id": "uuid" 
+}
+
 if intent == "clarify", include:
 {
     "intent": "clarify",

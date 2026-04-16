@@ -18,7 +18,7 @@ import os # For environment variable access
 
 JWT_SECRET = os.getenv("JWT_SECRET", "CHANGE_ME")  # This function as way to set the secret key from an environment variable, with a default for development. We should change this later.
 JWT_ALG = "HS256" # The algorithm used for signing the JWTs. 
-ACCESS_MINUTES = 15 # Access token expiration time in minutes
+ACCESS_MINUTES = 60# Access token expiration time in minutes
 REFRESH_DAYS = 14 # Refresh token expiration time in days
 
 #Create auth token on login, We dont use this yet but it's here for better security later on

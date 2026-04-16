@@ -1,0 +1,10 @@
+Implement TTS
+	1. TTS button appears besides send button (handle by AIchatsidepanel)
+		1. On press it becomes read until pressed again 
+	2. On press button triggers a permission to access mircrophone
+        1. send a boolean to a function indicating mic is pressed.
+        2. use 
+	3. When granted button starts recording
+		- The recording is sent to the LLM as a normal text
+			- The recording triggers a function that parses voice to text.
+	4. When not it come backs again to its normal state

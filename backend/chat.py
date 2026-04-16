@@ -9,7 +9,11 @@ from backend.mapbox import get_directions
 from backend.schedule import Schedule
 from backend.errors import ConflictError
 from app.services.calendar_service import get_calendar_context
-from app.services.events_service import create_event, update_event, remove_event # imported to connect create event to database
+from app.services.events_service import (create_event, update_event, remove_event, add_event_participant,
+                                        get_participants_for_event,remove_event_participant, get_participant_details, 
+                                        get_participant_location
+                                        ) # imported to connect create/manipulate events in database
+
 # database session for now--
 from app.db import SessionLocal
 session = SessionLocal()
@@ -102,11 +106,16 @@ def chat(data: UserMessage):
                 description="",
                 priority_rank=priority,
             )
-            print("CREATED EVENT:", created_event) # debug print
-            print("EVENT CREATED IN DATABASE") # debug print
-            print("On calendar:", data.calendar_id) # debug print
+
+            for p in info.get("participants", []):
+                add_event_participant(
+                    session,
+                    event_id = created_event.event_id,
+                    name = p["name"],
+                    info = p.get("info"),
+                    full_address = p.get("full_address"),
+                )
             
-    
         except ConflictError as e:
             return {"error": str(e)}
 
@@ -192,9 +201,103 @@ def chat(data: UserMessage):
         return {
             "response": message
         }
-    
+
+    elif intent == "add_participant":
+        event_id = info.get("event_id")
+        participant_name = info.get("participant_name")
+
+        if not event_id or not participant_name:
+            return {"error": "Missing event_id or participant_name."}
+
+        try:
+            participant = add_event_participant(
+                db = session,
+                event_id = uuid.UUID(event_id),
+                name = participant_name,
+                info = info.get("participant_info"),
+                full_address = info.get("participant_location"),
+            )
+            return {
+                "response": f"Added {participant.name} to the event.",
+                "action": "add_participant",
+                "participant": {
+                    "participant_id": str(participant.participant_id),
+                    "name": participant.name,
+                    "info": participant.info,
+                    "full_address": participant.full_address,
+                },
+            }
+        except Exception as e:
+            return {"error": f"Error adding participant: {str(e)}"}
+
+    elif intent == "remove_participant":
+        participant_id = info.get("participant_id")
+
+        if not participant_id:
+            return {"error": "Missing participant_id."}
+
+        try:
+            remove_event_participant(db = session, event_id = uuid.UUID(event_id), participant_id = uuid.UUID(participant_id))
+            return {
+                "response": "Participant removed.",
+                "action": "remove_participant",
+                "participant_id": participant_id,
+            }
+        except Exception as e:
+            return {"error": f"Error removing participant: {str(e)}"}
+
+    elif intent == "list_participants":
+        event_id = info.get("event_id")
+
+        if not event_id:
+            return {"error": "Missing event_id."}
+
+        try:
+            participants = get_participants_for_event(db = session, event_id = uuid.UUID(event_id))
+            return {
+                "response": "Here are the participants.",
+                "action": "list_participants",
+                "participants": [
+                    {
+                        "participant_id": str(p.participant_id),
+                        "name": p.name,
+                        "info": p.info,
+                        "full_address": p.full_address,
+                        "event_id": str(p.event_id),
+                    }
+                    for p in participants
+                ],
+            }
+        except Exception as e:
+            return {"error": f"Error listing participants: {str(e)}"}
+
+    elif intent == "get_participant_info":
+        participant_id = info.get("participant_id")
+        if not participant_id:
+            return {"error": "Missing participant_id."}
+
+        try:
+            participant = get_participant_details(db = session, participant_id = uuid.UUID(participant_id))
+            if participant is None:
+                return {"error": "Participant not found"}
+
+            return {
+                "response": f"Found participant {participant.name}.",
+                "action": "get_participant_info",
+                "participant": {
+                    "participant_id": str(participant.participant_id),
+                    "name": participant.name,
+                    "info": participant.info,
+                    "full_address": participant.full_address,
+                    "event_id": str(participant.event_id),
+                },
+            }
+        except Exception as e:
+            return {"error": f"Error getting participant info: {str(e)}"}
+        
     else:
         return {"response": "I didn't understand that, can you rephrase?"}
+    
     
 
 

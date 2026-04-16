@@ -5,9 +5,11 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { Button } from "../design_system/components/ui/Button";
 import { Input } from "../design_system/components/ui/Input";
+import {
+  startMicrophoneInput,
+  stopMicrophoneInput,
+} from "../services/tts/mic_parsing";
 import ChatClient from "../api_client/ChatClient";
-
-
 
 type ChatMessage = {
   id: string;
@@ -28,21 +30,11 @@ export const AiChatPanel = () => {
   const [draft, setDraft] = useState("");
   const [chatId, setChatId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const chatClient = useMemo(() => new ChatClient(), []); // Memoize ChatClient instance to avoid unnecessary re-instantiations on re-renders
-  
+  const [isRecording, setIsRecording] = useState(false);
+  const [hasMicDraft, setHasMicDraft] = useState(false);
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const trimmed = draft.trim();
-    if (!trimmed) return;
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now().toString(), role: "user", text: trimmed },
-    ]);
-    setDraft("");
-    setIsLoading(true);
+  const chatClient = useMemo(() => new ChatClient(), []);
 
-// Helper function for now to add assistant messages to the chat, we can call this after receiving a response from the API in the future.
   const addAssistantMessage = (text: string) => {
     setMessages((prev) => [
       ...prev,
@@ -54,61 +46,108 @@ export const AiChatPanel = () => {
     ]);
   };
 
-    if(!chatId){ // If no chatId, create a new chat with the first message
-      chatClient.createChatAPI(trimmed).then(async (response) => {
-        if (response.ok) {
-          const data = await response.json();
-          console.log("createChatAPI data:", data);
-          setChatId(data.chat_id); // Store the chatId for future messages
+  const sendCurrentDraft = async () => {
+    const trimmed = draft.trim();
+    if (!trimmed || isLoading) return;
 
-          const calendarId = localStorage.getItem("calendar_id");
-          // Null check.
-          if (!calendarId) {
-            addAssistantMessage("No calendar selected.");
-            setIsLoading(false);
-            return;
-          }
-          const aiResponse = await chatClient.askAI(trimmed, calendarId);
-          
-          if (aiResponse.ok) {
-            const aiData = await aiResponse.json();
-            console.log("askAI data:", aiData);
-            addAssistantMessage(aiData.response); // Add the AI's response to the chat
-          } else {
-            // Handle error for askAI
-          }
-        } else {
-          // Handle error for createChatAPI
-        }
-        setIsLoading(false);
-      });
-    } else { // If chatId exists, send message to existing chat
-      chatClient.sendMessageAPI(chatId, trimmed).then(async (response) => {
-        if (response.ok) {
-          const data = await response.json();
-          console.log("sendMessageAPI data:", data);
-           const calendarId = localStorage.getItem("calendar_id");
-          // Null check.-- Duplicated code probably could refactor
-          if (!calendarId) {
-            addAssistantMessage("No calendar selected.");
-            setIsLoading(false);
-            return;
-          }
-          //--------------------
-          const aiResponse = await chatClient.askAI(trimmed, calendarId); // This is currently not interacting with the database.
-          if (aiResponse.ok) {
-            const aiData = await aiResponse.json();
-            console.log("askAI data:", aiData);
-            addAssistantMessage(aiData.response); // Add the AI's response to the chat
-          } else {
-            // Handle error for askAI
-          }
-        } else {
-          // Handle error for sendMessageAPI
-        }
-        setIsLoading(false);
-      });
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now().toString(), role: "user", text: trimmed },
+    ]);
+    setDraft("");
+    setHasMicDraft(false);
+    setIsLoading(true);
 
+    try {
+      const calendarId = localStorage.getItem("calendar_id");
+      if (!calendarId) {
+        addAssistantMessage("No calendar selected.");
+        return;
+      }
+
+      let currentChatId = chatId;
+
+      if (!currentChatId) {
+        const createResponse = await chatClient.createChatAPI(trimmed);
+
+        if (!createResponse.ok) {
+          addAssistantMessage("Failed to create chat.");
+          return;
+        }
+
+        const createData = await createResponse.json();
+        console.log("createChatAPI data:", createData);
+
+        currentChatId = createData.chat_id;
+        setChatId(currentChatId);
+      } else {
+        const sendResponse = await chatClient.sendMessageAPI(
+          currentChatId,
+          trimmed
+        );
+
+        if (!sendResponse.ok) {
+          addAssistantMessage("Failed to send message.");
+          return;
+        }
+
+        const sendData = await sendResponse.json();
+        console.log("sendMessageAPI data:", sendData);
+      }
+
+      const aiResponse = await chatClient.askAI(trimmed, calendarId);
+
+      if (!aiResponse.ok) {
+        addAssistantMessage("Failed to get AI response.");
+        return;
+      }
+
+      const aiData = await aiResponse.json();
+      console.log("askAI data:", aiData);
+      addAssistantMessage(aiData.response);
+    } catch (error) {
+      console.error(error);
+      addAssistantMessage("Something went wrong while sending the message.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    await sendCurrentDraft();
+  };
+
+  const handleMicClick = async () => {
+    if (isLoading) return;
+
+    if (isRecording) {
+      stopMicrophoneInput();
+      return;
+    }
+
+    if (hasMicDraft && draft.trim()) {
+      await sendCurrentDraft();
+      return;
+    }
+
+    setIsRecording(true);
+    setHasMicDraft(false);
+
+    try {
+      const text = await startMicrophoneInput();
+
+      if (text && text.trim()) {
+        setDraft(text);
+        setHasMicDraft(true);
+      } else {
+        addAssistantMessage("Could not transcribe microphone input.");
+      }
+    } catch (error) {
+      console.error(error);
+      addAssistantMessage("Microphone transcription failed.");
+    } finally {
+      setIsRecording(false);
     }
   };
 
@@ -137,7 +176,9 @@ export const AiChatPanel = () => {
               bgcolor:
                 message.role === "user" ? "primary.main" : "background.paper",
               color:
-                message.role === "user" ? "primary.contrastText" : "text.primary",
+                message.role === "user"
+                  ? "primary.contrastText"
+                  : "text.primary",
               border: message.role === "user" ? undefined : "1px solid",
               borderColor: message.role === "user" ? undefined : "divider",
             }}
@@ -155,11 +196,30 @@ export const AiChatPanel = () => {
         <Input
           placeholder="Ask about your schedule..."
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setHasMicDraft(false);
+          }}
           sx={{ flex: 1 }}
         />
-        <Button type="submit" disabled={!draft.trim()}>
+
+        <Button type="submit" disabled={!draft.trim() || isLoading}>
           Send
+        </Button>
+
+        <Button
+          type="button"
+          onClick={handleMicClick}
+          disabled={isLoading}
+          sx={{
+            backgroundColor: isRecording ? "error.main" : undefined,
+            color: isRecording ? "error.contrastText" : undefined,
+            "&:hover": {
+              backgroundColor: isRecording ? "error.dark" : undefined,
+            },
+          }}
+        >
+          {isRecording ? "⏹" : hasMicDraft ? "📨" : "🎤"}
         </Button>
       </Box>
     </Stack>

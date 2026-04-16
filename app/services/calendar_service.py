@@ -2,6 +2,8 @@ from typing import Optional
 from app.db import SessionLocal
 from app.models.calendar import Calendar
 from app.models.events  import Events
+from app.models.event_participants import EventParticipants
+from app.models.participants import Participants
 from sqlalchemy import UUID
 from datetime import datetime
 from backend.llm_agent import ask_llm
@@ -110,6 +112,23 @@ def get_calendar_context(session: Session, calendar_id: str) -> dict:
                 "location": event.full_address,
                 "description": event.event_description,
                 "priority_rank": event.priority_rank,
+                "participants": [
+                    {
+                        "participant_id": str(p.participant_id),
+                        "name": p.name,
+                        "info": p.info,
+                        "full_address": p.full_address,
+                    }
+                    for p in (
+                        session.query(Participants)
+                        .join(
+                            EventParticipants,
+                            EventParticipants.participant_id == Participants.participant_id,
+                        )
+                        .filter(EventParticipants.event_id == event.event_id)
+                        .all()
+                    )
+                ],
             }
             for event in events
         ]

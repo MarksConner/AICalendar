@@ -82,6 +82,38 @@ class CreateChat(BaseModel):
 class CreateChatOnFirstMessage(BaseModel):
     content:str
 
+
+
+class AddEventParticipant(BaseModel):
+    event_id: UUID
+    name: str
+    info: str | None = None
+    full_address: str | None = None
+
+
+class RemoveEventParticipant(BaseModel):
+    event_id: UUID
+    participant_id: UUID
+
+
+class ParticipantInfo(BaseModel):
+    participant_id: UUID
+    name: str
+    info: str | None = None
+    full_address: str | None = None
+
+
+class EventParticipantInfo(BaseModel):
+    event_id: UUID
+    participant_id: UUID
+    participant: ParticipantInfo
+
+class ParticipantsForEvent(BaseModel):
+    event_id: UUID
+    participants: list[ParticipantInfo]
+
+
+
 #Messages
 class SendMessage(BaseModel):
     chat_id: UUID

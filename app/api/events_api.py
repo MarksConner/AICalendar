@@ -1,9 +1,10 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.base_model_classes import EventCreate, EventUpdate
+from app.api.base_model_classes import EventCreate, EventUpdate, AddEventParticipant, ParticipantInfo, ParticipantsForEvent, RemoveEventParticipant, EventParticipantInfo
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
-from app.services.events_service import  create_event, get_events_for_calendar_day, get_events_for_calendar_month,update_event,detect_event_conflicts, add_event_participant, get_event_by_id, remove_event, remove_event_participant
+from app.services.events_service import (create_event, get_events_for_calendar_day, get_events_for_calendar_month,update_event,detect_event_conflicts, 
+ get_event_by_id, remove_event, add_event_participant, remove_event_participant,get_participants_for_event, get_participant_details,update_participant_location,update_participant_info,detect_participant_event_conflicts)
 from datetime import datetime, timezone
 
 
@@ -76,3 +77,67 @@ def get_event_by_id_router(event_id: UUID ,db: Session = Depends(get_db) ):
     return event
 
 
+
+## Participants helpers and routes
+def participant_to_response(participant) -> ParticipantInfo:
+    return ParticipantInfo(participant_id=participant.participant_id,name=participant.name,info=participant.info,full_address=participant.full_address,)
+
+
+@router.post("/add_participant/{event_id}", response_model=ParticipantInfo)
+def add_participant_route(
+    event_id: UUID,
+    participant: AddEventParticipant,
+    db: Session = Depends(get_db),
+):
+    try:
+        created_participant = add_event_participant(
+            db=db,
+            event_id=event_id,
+            name=participant.name,
+            info=participant.info,
+            full_address=participant.full_address,
+        )
+        return participant_to_response(created_participant)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/remove_participant", response_model=dict)
+def remove_participant_route(
+    payload: RemoveEventParticipant,
+    db: Session = Depends(get_db),
+):
+    try:
+        remove_event_participant(
+            db,
+            payload.event_id,
+            payload.participant_id,
+        )
+        return {"message": "Participant removed successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/participants_for_event/{event_id}", response_model=ParticipantsForEvent)
+def get_participants_for_event_route(
+    event_id: UUID,
+    db: Session = Depends(get_db),
+):
+    try:
+        participants = get_participants_for_event(db, event_id)
+        return ParticipantsForEvent(
+            event_id=event_id,
+            participants=[participant_to_response(p) for p in participants],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/participant_info/{participant_id}", response_model=ParticipantInfo)
+def get_participant_info_route(participant_id: UUID,db: Session = Depends(get_db),):
+    participant = get_participant_details(db, participant_id)
+
+    if participant is None:
+        raise HTTPException(status_code=404, detail="Participant not found")
+
+    return participant_to_response(participant)

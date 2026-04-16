@@ -107,6 +107,26 @@ export interface AiSuggestionsResponse {
   suggestions: AiSuggestion[];
 }
 
+
+// Event participants
+  export interface AddEventParticipantInput {
+  name: string;
+  info?: string | null;
+  role?: string | null;
+}
+
+  export interface EventParticipant {
+    participant_id: string;
+    name: string;
+    info?: string | null;
+    role?: string | null;
+    event_id: string;
+  }
+
+  export interface ParticipantsForEvent {
+    event_id: string;
+    participants: EventParticipant[];
+  }
 /**
  * The full list of operations the frontend can perform against the backend.
  *
@@ -132,17 +152,24 @@ export interface AppDataService {
   // POST /calendar/day-events — creates a new event.
   createDayEvent(date: Date, input: CreateDayEventInput): Promise<DailyTimelineItem>;
   // PATCH /calendar/day-events/{id} — partial update on an existing event.
-  updateDayEvent(
-    date: Date,
-    eventId: string,
-    updates: UpdateDayEventInput
-  ): Promise<DailyTimelineItem>;
+  updateDayEvent(date: Date,eventId: string,updates: UpdateDayEventInput): Promise<DailyTimelineItem>
+
   // DELETE /calendar/day-events/{id}
   deleteDayEvent(date: Date, eventId: string): Promise<void>;
+  
   // POST /ai/day-suggestions — sends the date + current schedule to the LLM,
   // returns AI-generated suggestions. All suggestion text comes from the backend.
-  getDayAiSuggestions(
-    date: Date,
-    items: DailyTimelineItem[]
-  ): Promise<AiSuggestionsResponse>;
+  getDayAiSuggestions(date: Date,items: DailyTimelineItem[]): Promise<AiSuggestionsResponse>;
+
+  //Participatns Methods
+  addEventParticipant(eventId: string,input: AddEventParticipantInput): Promise<EventParticipant>;
+  removeEventParticipant(participantId: string): Promise<void>;
+  getParticipantsForEvent(eventId: string): Promise<ParticipantsForEvent>;
+  getParticipantInfo(participantId: string): Promise<EventParticipant>;
+  getEventsForParticipant(participantName: string): Promise<CalendarEvent[]>;
+
+  // Method for microphone transcription
+  startMicrophoneTranscription(): Promise<string | null>;
+  stopMicrophoneTranscription(): void;
+
 }

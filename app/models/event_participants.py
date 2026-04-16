@@ -7,10 +7,6 @@ import uuid
 from .base import Base
 
 class EventParticipants(Base):
-    __tablename__ = "eventsparticipants"
-
-    name = Column(Text, primary_key=True)
-    info = Column(Text, primary_key=True)   # composite PK with name
-    role = Column(Text)
-
-    event_id = Column(UUID(as_uuid=True), ForeignKey("events.event_id"))
+    __tablename__ = "events_participants"
+    participant_id = Column(UUID(as_uuid=True), ForeignKey("participants.participant_id"), primary_key=True, nullable = False)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.event_id"), primary_key=True, nullable = False)

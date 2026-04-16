@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from app.api.base_model_classes import CalendarCreate, EventCreate
 from app.db import SessionLocal
 from app.models.calendar import Calendar
+from app.models.event_participants import EventParticipants
 from app.models.events import Events
 from app.models.users import Users
 from app.services.events_service import (
@@ -15,6 +16,14 @@ from app.services.events_service import (
     remove_event,
     get_event_by_id,
     detect_event_conflicts,
+    add_event_participant,
+    remove_event_participant,
+    get_participants_for_event,
+    get_participant_details,
+    remove_participant,
+    update_participant_location,
+    update_participant_info,
+    detect_participant_event_conflicts,
 )
 from app.services.calendar_service import (
     create_calendar,
@@ -723,3 +732,226 @@ def test_day_scheduling_hints_end_before_start(db_session, created_calendar):
 
     assert excinfo.value.status_code == 400
     assert excinfo.value.detail == "endTime must be after startTime"
+
+# EventParticipants
+
+def test_create_event_participant(db_session, created_calendar, fake_event_data, test_user):
+    event = create_event(
+        db_session,
+        created_calendar.calendar_id,
+        fake_event_data["event_name"],
+        fake_event_data["full_address"],
+        fake_event_data["start_time"],
+        fake_event_data["end_time"],
+        fake_event_data["event_description"],
+        fake_event_data["priority_rank"],
+    )
+
+    participant = add_event_participant(
+        db_session,
+        event.event_id,
+        test_user.first_name,
+        test_user.email,
+        None,
+    )
+
+    participants = get_participants_for_event(db_session, event.event_id)
+    participant_names = [p.name for p in participants]
+
+    assert participant is not None
+    assert participant.participant_id is not None
+    assert participant.name == test_user.first_name
+    assert test_user.first_name in participant_names
+
+
+def test_remove_event_participant(db_session, created_calendar, fake_event_data, test_user):
+    event = create_event(
+        db_session,
+        created_calendar.calendar_id,
+        fake_event_data["event_name"],
+        fake_event_data["full_address"],
+        fake_event_data["start_time"],
+        fake_event_data["end_time"],
+        fake_event_data["event_description"],
+        fake_event_data["priority_rank"],
+    )
+
+    participant = add_event_participant(
+        db_session,
+        event.event_id,
+        test_user.first_name,
+        test_user.email,
+        None,
+    )
+
+    result = remove_event_participant(db_session, event.event_id, participant.participant_id)
+
+    participants = get_participants_for_event(db_session, event.event_id)
+    participant_ids = [p.participant_id for p in participants]
+
+    assert result is True
+    assert participant.participant_id not in participant_ids
+
+
+def test_get_event_participants(db_session, created_calendar, fake_event_data, test_user, other_test_user):
+    event = create_event(
+        db_session,
+        created_calendar.calendar_id,
+        fake_event_data["event_name"],
+        fake_event_data["full_address"],
+        fake_event_data["start_time"],
+        fake_event_data["end_time"],
+        fake_event_data["event_description"],
+        fake_event_data["priority_rank"],
+    )
+
+    add_event_participant(
+        db_session,
+        event.event_id,
+        test_user.first_name,
+        test_user.email,
+        None,
+    )
+    add_event_participant(
+        db_session,
+        event.event_id,
+        other_test_user.first_name,
+        other_test_user.email,
+        None,
+    )
+
+    participants = get_participants_for_event(db_session, event.event_id)
+    participant_names = [p.name for p in participants]
+
+    assert test_user.first_name in participant_names
+    assert other_test_user.first_name in participant_names
+    assert len(participants) == 2
+
+
+def test_get_events_participants_info(db_session, created_calendar, fake_event_data, test_user, other_test_user):
+    event = create_event(
+        db_session,
+        created_calendar.calendar_id,
+        fake_event_data["event_name"],
+        fake_event_data["full_address"],
+        fake_event_data["start_time"],
+        fake_event_data["end_time"],
+        fake_event_data["event_description"],
+        fake_event_data["priority_rank"],
+    )
+
+    add_event_participant(
+        db_session,
+        event.event_id,
+        test_user.first_name,
+        test_user.email,
+        None,
+    )
+    add_event_participant(
+        db_session,
+        event.event_id,
+        other_test_user.first_name,
+        other_test_user.email,
+        None,
+    )
+
+    participants_info = get_participants_for_event(db_session, event.event_id)
+
+    names = [p.name for p in participants_info]
+    infos = [p.info for p in participants_info]
+
+    assert test_user.first_name in names
+    assert other_test_user.first_name in names
+    assert test_user.email in infos[0]
+    assert other_test_user.email in infos[1]
+    assert other_test_user.email in infos
+
+
+def test_get_participant_details(db_session, created_calendar, fake_event_data, test_user):
+    event = create_event(
+        db_session,
+        created_calendar.calendar_id,
+        fake_event_data["event_name"],
+        fake_event_data["full_address"],
+        fake_event_data["start_time"],
+        fake_event_data["end_time"],
+        fake_event_data["event_description"],
+        fake_event_data["priority_rank"],
+    )
+
+    participant = add_event_participant(
+        db_session,
+        event.event_id,
+        test_user.first_name,
+        test_user.email,
+        "123 Test St",
+    )
+
+    found = get_participant_details(db_session, participant.participant_id)
+
+    assert found is not None
+    assert found.participant_id == participant.participant_id
+    assert found.name == test_user.first_name
+    assert found.info == test_user.email
+    assert found.full_address == "123 Test St"
+
+
+def test_detect_participant_event_conflicts(db_session, created_calendar, test_user):
+    event1 = create_event(
+        db_session,
+        created_calendar.calendar_id,
+        "Existing Event",
+        "123 Test St",
+        datetime(2026, 4, 9, 10, 0, 0),
+        datetime(2026, 4, 9, 11, 0, 0),
+        "Description",
+        1,
+    )
+
+    participant = add_event_participant(
+        db_session,
+        event1.event_id,
+        test_user.first_name,
+        test_user.email,
+        None,
+    )
+
+    conflicts = detect_participant_event_conflicts(
+        db_session,
+        participant.participant_id,
+        datetime(2026, 4, 9, 10, 30, 0),
+        datetime(2026, 4, 9, 11, 30, 0),
+    )
+
+    conflict_ids = [event.event_id for event in conflicts]
+    assert event1.event_id in conflict_ids
+
+
+def test_remove_participant_only_when_unlinked(db_session, created_calendar, fake_event_data, test_user):
+    event = create_event(
+        db_session,
+        created_calendar.calendar_id,
+        fake_event_data["event_name"],
+        fake_event_data["full_address"],
+        fake_event_data["start_time"],
+        fake_event_data["end_time"],
+        fake_event_data["event_description"],
+        fake_event_data["priority_rank"],
+    )
+
+    participant = add_event_participant(
+        db_session,
+        event.event_id,
+        test_user.first_name,
+        test_user.email,
+        None,
+    )
+
+    with pytest.raises(ValueError, match="Cannot delete participant"):
+        remove_participant(db_session, participant.participant_id)
+
+    remove_event_participant(db_session, event.event_id, participant.participant_id)
+    result = remove_participant(db_session, participant.participant_id)
+
+    assert result is True
+    assert get_participant_details(db_session, participant.participant_id) is None
