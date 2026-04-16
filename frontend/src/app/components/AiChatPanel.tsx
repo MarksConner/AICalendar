@@ -10,6 +10,7 @@ import {
   stopMicrophoneInput,
 } from "../services/tts/mic_parsing";
 import ChatClient from "../api_client/ChatClient";
+import { ThinkingSymbol } from "../design_system/components/ui/ThinkingSymbol";
 
 type ChatMessage = {
   id: string;
@@ -101,7 +102,7 @@ export const AiChatPanel = () => {
         addAssistantMessage("Failed to get AI response.");
         return;
       }
-
+      
       const aiData = await aiResponse.json();
       console.log("askAI data:", aiData);
       addAssistantMessage(aiData.response);
@@ -184,6 +185,7 @@ export const AiChatPanel = () => {
             }}
           >
             <Typography variant="body2">{message.text}</Typography>
+            
           </Box>
         ))}
       </Box>
@@ -202,11 +204,10 @@ export const AiChatPanel = () => {
           }}
           sx={{ flex: 1 }}
         />
-
+          {isLoading && <ThinkingSymbol />}
         <Button type="submit" disabled={!draft.trim() || isLoading}>
           Send
         </Button>
-
         <Button
           type="button"
           onClick={handleMicClick}
@@ -220,7 +221,10 @@ export const AiChatPanel = () => {
           }}
         >
           {isRecording ? "⏹" : hasMicDraft ? "📨" : "🎤"}
+             
         </Button>
+        
+    
       </Box>
     </Stack>
   );
