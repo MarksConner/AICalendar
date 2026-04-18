@@ -1,0 +1,75 @@
+<svg width="120" height="120" viewBox="0 0 120 120" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Agentic AI Smart Calendar Logo</title>
+  <desc>Neural network overlaid on a calendar grid with a light background and mint highlighted date cell</desc>
+
+  <!-- BG: near-white warm -->
+  <rect width="120" height="120" rx="24" fill="#F7F7FA"/>
+
+  <!-- Calendar border -->
+  <rect x="8" y="22" width="104" height="92" rx="6" fill="none" stroke="#D0D0E0" stroke-width="1"/>
+
+  <!-- Grid vertical lines -->
+  <line x1="29" y1="32" x2="29" y2="108" stroke="#E0E0EE" stroke-width="0.8"/>
+  <line x1="43" y1="32" x2="43" y2="108" stroke="#E0E0EE" stroke-width="0.8"/>
+  <line x1="57" y1="32" x2="57" y2="108" stroke="#E0E0EE" stroke-width="0.8"/>
+  <line x1="71" y1="32" x2="71" y2="108" stroke="#E0E0EE" stroke-width="0.8"/>
+  <line x1="85" y1="32" x2="85" y2="108" stroke="#E0E0EE" stroke-width="0.8"/>
+  <line x1="99" y1="32" x2="99" y2="108" stroke="#E0E0EE" stroke-width="0.8"/>
+
+  <!-- Grid horizontal lines -->
+  <line x1="8" y1="46" x2="112" y2="46" stroke="#E0E0EE" stroke-width="0.8"/>
+  <line x1="8" y1="60" x2="112" y2="60" stroke="#E0E0EE" stroke-width="0.8"/>
+  <line x1="8" y1="74" x2="112" y2="74" stroke="#E0E0EE" stroke-width="0.8"/>
+  <line x1="8" y1="88" x2="112" y2="88" stroke="#E0E0EE" stroke-width="0.8"/>
+
+  <!-- Header stripe -->
+  <rect x="8" y="22" width="104" height="14" rx="6" fill="#6E3FF3"/>
+  <rect x="8" y="28" width="104" height="8" fill="#6E3FF3"/>
+
+  <!-- Binding pegs -->
+  <rect x="34" y="14" width="7" height="16" rx="3.5" fill="#6E3FF3"/>
+  <rect x="79" y="14" width="7" height="16" rx="3.5" fill="#6E3FF3"/>
+
+  <!-- Neural nodes Layer 1 (input) -->
+  <circle cx="15" cy="52" r="4.5" fill="#6E3FF3"/>
+  <circle cx="15" cy="66" r="4.5" fill="#6E3FF3"/>
+  <circle cx="15" cy="80" r="4.5" fill="#6E3FF3"/>
+
+  <!-- Neural nodes Layer 2 (hidden) -->
+  <circle cx="57" cy="38" r="5" fill="#C13BF7"/>
+  <circle cx="57" cy="52" r="5" fill="#C13BF7"/>
+  <circle cx="57" cy="66" r="5" fill="#C13BF7"/>
+  <circle cx="57" cy="80" r="5" fill="#C13BF7"/>
+
+  <!-- Neural nodes Layer 3 (output) -->
+  <circle cx="99" cy="52" r="4.5" fill="#00C9A7"/>
+  <circle cx="99" cy="66" r="4.5" fill="#00C9A7"/>
+  <circle cx="99" cy="80" r="4.5" fill="#00C9A7"/>
+
+  <!-- Synapses L1 → L2 -->
+  <line x1="19.5" y1="52" x2="52" y2="38" stroke="#6E3FF3" stroke-width="0.8" opacity="0.45"/>
+  <line x1="19.5" y1="52" x2="52" y2="52" stroke="#6E3FF3" stroke-width="0.8" opacity="0.6"/>
+  <line x1="19.5" y1="52" x2="52" y2="66" stroke="#6E3FF3" stroke-width="0.5" opacity="0.3"/>
+  <line x1="19.5" y1="66" x2="52" y2="52" stroke="#6E3FF3" stroke-width="0.5" opacity="0.3"/>
+  <line x1="19.5" y1="66" x2="52" y2="66" stroke="#6E3FF3" stroke-width="0.8" opacity="0.6"/>
+  <line x1="19.5" y1="66" x2="52" y2="80" stroke="#6E3FF3" stroke-width="0.8" opacity="0.45"/>
+  <line x1="19.5" y1="80" x2="52" y2="66" stroke="#6E3FF3" stroke-width="0.5" opacity="0.3"/>
+  <line x1="19.5" y1="80" x2="52" y2="80" stroke="#6E3FF3" stroke-width="0.8" opacity="0.6"/>
+
+  <!-- Synapses L2 → L3 -->
+  <line x1="62" y1="38" x2="94.5" y2="52" stroke="#C13BF7" stroke-width="0.8" opacity="0.45"/>
+  <line x1="62" y1="52" x2="94.5" y2="52" stroke="#C13BF7" stroke-width="0.8" opacity="0.6"/>
+  <line x1="62" y1="52" x2="94.5" y2="66" stroke="#C13BF7" stroke-width="0.5" opacity="0.3"/>
+  <line x1="62" y1="66" x2="94.5" y2="52" stroke="#C13BF7" stroke-width="0.5" opacity="0.3"/>
+  <line x1="62" y1="66" x2="94.5" y2="66" stroke="#C13BF7" stroke-width="0.8" opacity="0.6"/>
+  <line x1="62" y1="80" x2="94.5" y2="66" stroke="#C13BF7" stroke-width="0.8" opacity="0.45"/>
+  <line x1="62" y1="80" x2="94.5" y2="80" stroke="#C13BF7" stroke-width="0.8" opacity="0.6"/>
+
+  <!-- Today cell snapped to grid: col5/row2 → x=71, y=46, 14×14 -->
+  <rect x="71" y="46" width="14" height="14" rx="2.5" fill="#00C9A7"/>
+  <circle cx="78" cy="53" r="2.5" fill="#F7F7FA"/>
+
+  <!-- Auto-adjust arc -->
+  <path d="M 108 46 A 14 14 0 0 1 108 80" fill="none" stroke="#00C9A7" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <polygon points="108,80 104,74 112,74" fill="#00C9A7"/>
+</svg>

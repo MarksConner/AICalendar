@@ -192,7 +192,7 @@ export function AppShell() {
 
   const handleGoToCalendarHome = () => {
     const today = new Date();
-    navigate(`/?view=day&date=${toDateParam(today)}`);
+    navigate(`/today?view=day&date=${toDateParam(today)}`);
   };
 
   const handleOpenChat = () => setIsChatOpen(true);

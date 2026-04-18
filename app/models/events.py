@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text,Integer, TIMESTAMP
+from sqlalchemy import Column, String, Text, Integer, Float, TIMESTAMP
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import func
@@ -12,8 +12,8 @@ class Events(Base):
     event_name = Column(Text, nullable=False)
     event_description = Column(Text)
     full_address = Column(Text)
-    geo_latitude = Column(float, nullable=True)
-    geo_longitude = Column(float, nullable=True)
+    geo_latitude = Column(Float, nullable=True)
+    geo_longitude = Column(Float, nullable=True)
     priority_rank = Column(Integer)
     start_time = Column(TIMESTAMP, nullable=False)
     end_time = Column(TIMESTAMP)

@@ -50,8 +50,8 @@ export const LoginPage = () => {
       localStorage.setItem("user_id", data.user_id);
       localStorage.setItem("token_type", data.token_type);
 
-      // Navigate to dashboard after successful login
-      navigate("/");
+      // Navigate to app dashboard after successful login
+      navigate("/today");
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Login failed. Please try again.";

@@ -1,6 +1,13 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
+// Landing/about page — public default route
+const LandingPage = lazy(() =>
+  import("./app/Pages/Landing/LandingPage").then((module) => ({
+    default: module.LandingPage,
+  }))
+);
+
 const LoginPage = lazy(() =>
   import("./app/Pages/Login/LoginPage").then((module) => ({
     default: module.LoginPage,
@@ -45,14 +52,14 @@ function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        {/* Public route */}
+        {/* Public routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/create-user" element={<CreateUserPage />} />
         <Route path="/recover-account" element={<RecoverAccountPage />} />
 
-        {/* App routes inside shell */}
+        {/* App routes inside shell (require auth) */}
         <Route element={<AppShell />}>
-          <Route path="/" element={<TodaysPlanPage />} />
           <Route path="/today" element={<TodaysPlanPage />} />
           <Route path="/events/:eventId" element={<EventDetailsPage />} />
           <Route path="/proposals" element={<ProposalsPage />} />
