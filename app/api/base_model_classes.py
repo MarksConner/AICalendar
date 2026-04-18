@@ -126,3 +126,8 @@ class MessageResponse(BaseModel):
     content: str
     file_url: str | None = None
 
+#Mapbox Services
+class TravelTimeResponse(BaseModel):
+    travel_time_min: int
+    event_lat: float
+    event_long: float

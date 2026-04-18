@@ -12,8 +12,8 @@ def get_directions(origin, destination):
     data = r.json()
     return data
     
-
-def get_travel_time_minutes(origin_lat: float, origin_long: float, dest_lat: float, dest_long: float): #Given the geo-coords of two locations, get the travel time between the two assuming the transportation method is driving
+#Given the geo-coords of two locations, get the travel time between the two assuming the transportation method is driving
+def get_travel_time_minutes(origin_lat: float, origin_long: float, dest_lat: float, dest_long: float): 
     origin = f"{origin_long},{origin_lat}"
     destination = f"{dest_long},{dest_lat}"
     
@@ -34,7 +34,8 @@ def get_travel_time_minutes(origin_lat: float, origin_long: float, dest_lat: flo
     except requests.RequestException:
         return None
 
-def geocode(address: str): #Take an address in the form of "123 Main St, City, STATE" and convert it into a tuple of floats that represent the geo-coords of the location
+#Take an address in the form of "123 Main St, City, STATE" and convert it into a tuple of floats that represent the geo-coords of the location
+def geocode(address: str): #Expected Output: float tuple ; (latitude, longitude)
     if not isinstance(address, str):
         return None
     

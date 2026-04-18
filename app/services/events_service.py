@@ -12,12 +12,12 @@ from backend.mapbox import geocode
 
 
 def create_event(db: Session, calendar_id: UUID, event_name: str, full_address: str, start_time:datetime, end_time: datetime, description: str, priority_rank: int) -> Events:
-    geo_latitude = None
-    geo_longitude = None
+    geo_lat = None
+    geo_long = None
     if full_address:
         coords = geocode(full_address)
         if coords:
-            geo_latitude, geo_longitude = coords
+            geo_lat, geo_long = coords
             
     new_event =  Events(calendar_id=calendar_id,
         event_name=event_name,
@@ -26,8 +26,8 @@ def create_event(db: Session, calendar_id: UUID, event_name: str, full_address: 
         event_description=description,
         priority_rank=priority_rank,
         full_address= full_address,
-        geo_latitude=geo_latitude,
-        geo_longitude=geo_longitude
+        geo_latitude = geo_lat,
+        geo_longitude = geo_long
         )
     db.add(new_event)
     db.commit()

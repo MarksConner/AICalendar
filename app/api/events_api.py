@@ -1,11 +1,12 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.base_model_classes import EventCreate, EventUpdate, AddEventParticipant, ParticipantInfo, ParticipantsForEvent, RemoveEventParticipant, EventParticipantInfo
+from app.api.base_model_classes import EventCreate, EventUpdate, AddEventParticipant, ParticipantInfo, ParticipantsForEvent, RemoveEventParticipant, EventParticipantInfo, TravelTimeResponse
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.services.events_service import (create_event, get_events_for_calendar_day, get_events_for_calendar_month,update_event,detect_event_conflicts, 
  get_event_by_id, remove_event, add_event_participant, remove_event_participant,get_participants_for_event, get_participant_details,update_participant_location,update_participant_info,detect_participant_event_conflicts)
 from datetime import datetime, timezone
+from backend.mapbox import geocode, get_travel_time_minutes
 
 
 router = APIRouter(prefix= "/events",tags=["events"])
@@ -141,3 +142,36 @@ def get_participant_info_route(participant_id: UUID,db: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="Participant not found")
 
     return participant_to_response(participant)
+
+@router.get("/event_id/{event_id}/travel_time", response_model=TravelTimeResponse)
+def get_travel_time_route(
+    event_id: UUID,
+    from_lat: float,
+    from_long: float,
+    db: Session = Depends(get_db),
+):
+    event = get_event_by_id(db, event_id)
+    if event is None:
+        raise HTTPException(status_code = 404, detail = "Event not found") #Server could not find requested resource
+    
+    if not event.full_address:
+        raise HTTPException(status_code = 400, detail = "This event has no location set") #Request not processed due to client error
+    
+    #Grab cached coords. If None, geocode now and save
+    if event.geo_latitude is not None and event.geo_longitude is not None:
+        event_lat = event.geo_latitude
+        event_long = event.geo_longitude
+    else:
+        coords = geocode(event.full_address)
+        if coords is None:
+            raise HTTPException(status_code = 422, detail = "Could not find geographical coordinates for this event's address.") #Request failed due to semantic error
+        event_lat, event_long = coords
+        event.geo_latitude = event_lat
+        event.geo_longitude = event_long
+        db.commit()
+        
+    travel_time = get_travel_time_minutes(from_lat, from_long, event_lat, event_long)
+    if travel_time is None:
+        raise HTTPException(status_code = 503, detail = "Could not calculate travel time. Mapbox API may be down.") #Service unavailable
+    
+    return TravelTimeResponse(travel_time_min = travel_time, event_lat = event_lat, event_long = event_long)
