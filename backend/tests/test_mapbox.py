@@ -1,5 +1,6 @@
 import backend.mapbox as mapbox
 from backend.mapbox import geocode
+from backend.mapbox import get_travel_time_minutes
 from unittest.mock import patch, Mock
 
 
@@ -40,7 +41,7 @@ def test_geocode_mocks_requests(monkeypatch):
     monkeypatch.setattr(mapbox, "MAPBOX_TOKEN", "fake-token")
 
     result = mapbox.geocode("Reno")
-    assert result == "-119.8138,39.5296"
+    assert result == (39.5296, -119.8138)
     
 #Testing a valid address
 def test_geocode_success():
@@ -51,7 +52,7 @@ def test_geocode_success():
     with patch("backend.mapbox.requests.get", return_value=mock_response):
         result=geocode("1664 N Virginia St")
 
-    assert result==("-119.812804,39.539467")
+    assert result==(39.539467, -119.812804)
 
 #Testing an invalid address
 def test_geocode_failure():
@@ -63,3 +64,17 @@ def test_geocode_failure():
         result=geocode("123 Fake Address")
 
     assert result is None
+    
+#Testing travel time between Davidson Academy and Little Waldorf Saloon
+def test_travel_time_minutes():
+    #Davidson Academy: 1164 N Virginia St, Reno ; -119.816766,39.538546
+    #Little Waldorf Saloon: 1661 N Virginia St, Reno, NV ; -119.82164,39.547495
+    mock_response=Mock()
+    mock_response.json.return_value={"routes":[{"duration": 196.159}]}
+    mock_response.raise_for_status.return_value=None
+    
+    with patch("backend.mapbox.requests.get", return_value = mock_response):
+        result = get_travel_time_minutes(-119.816766, 39.538546, -119.82164, 39.547495)
+        
+    assert result==(-(-int(196.159) // 60))
+    
