@@ -7,17 +7,27 @@ from app.models.participants import Participants
 from sqlalchemy import UUID
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from backend.mapbox import geocode
 
 
 
 def create_event(db: Session, calendar_id: UUID, event_name: str, full_address: str, start_time:datetime, end_time: datetime, description: str, priority_rank: int) -> Events:
+    geo_latitude = None
+    geo_longitude = None
+    if full_address:
+        coords = geocode(full_address)
+        if coords:
+            geo_latitude, geo_longitude = coords
+            
     new_event =  Events(calendar_id=calendar_id,
         event_name=event_name,
         start_time=start_time,
         end_time=end_time,
         event_description=description,
         priority_rank=priority_rank,
-        full_address= full_address
+        full_address= full_address,
+        geo_latitude=geo_latitude,
+        geo_longitude=geo_longitude
         )
     db.add(new_event)
     db.commit()
@@ -62,8 +72,14 @@ def update_event(db: Session,event_id: UUID,event_name: str | None = None,start_
         event.priority_rank = priority_rank
     if description is not None:
         event.event_description = description
-    if full_address is not None:
+    if full_address is not None: #If address changed, re-geocode
         event.full_address = full_address
+        coords = geocode(full_address)
+        if coords:
+            event.geo_latitude, event.geo_longitude = coords
+        else: #Address changed but geocode failed, clear coords
+            event.geo_latitude = None
+            event.geo_longitude = None
 
     db.commit()
     db.refresh(event)
