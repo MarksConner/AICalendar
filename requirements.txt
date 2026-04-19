@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pydantic-settings
+openai
+python-jose[cryptography]
+bcrypt
+fastapi-mail
+icalendar
+requests
+python-dotenv
+pytest
+httpx
+PyJWT
+python-multipart
