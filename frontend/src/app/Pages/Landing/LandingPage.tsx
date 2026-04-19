@@ -6,6 +6,7 @@ import Typography from "@mui/material/Typography";
 import Grid from "@mui/material/Grid";
 import Divider from "@mui/material/Divider";
 import Chip from "@mui/material/Chip";
+import MuiLink from "@mui/material/Link";
 import {
   CalendarDays,
   Brain,
@@ -16,6 +17,7 @@ import {
   ArrowRight,
   BookOpen,
   Target,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "../../design_system/components/ui/Button";
 
@@ -219,9 +221,9 @@ function HeroSection() {
                 mb: 4,
               }}
             >
-              An intelligent scheduling assistant that adapts to your life —
-              resolving conflicts, optimizing focus time, and handling the
-              cognitive load of modern calendaring so you don't have to.
+              An intelligent scheduling assistant that adapts to your life; able to
+              resolve conflicts, optimize focus time, and handle the
+              cognitive load of modern scheduling so you don't have to.
             </Typography>
 
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
@@ -420,13 +422,13 @@ function ProjectSection() {
           >
             Why we built this
           </Typography>
-          <Typography variant="body1" sx={{ color: "#64748b", lineHeight: 1.8 }}>
-            Busy people spend too much time manually reshuffling calendars when
-            plans change. Existing tools are static, leading to conflicts and
-            lost focus time. Constant micro-planning increases cognitive load,
-            causes missed commitments, and erodes productivity — especially
-            harmful for students and professionals with variable, interdependent
-            schedules.
+          <Typography variant="body1" sx={{ color: "#546377d6", lineHeight: 1.8 }} align="justify">
+          Traditional calendars are passive. They display your events, but they don't help you actually manage your time. We built our intelligent, agent-driven calendar application to change that.
+Most people struggle with the hidden complexity of daily scheduling like calculating drive times, accounting for traffic, balancing personal routines, and finding time for the things they enjoy. Existing tools leave all of that work to the user. We believed there was a better way.
+Our application takes a proactive role in time management by integrating real-time location services and smart automation directly into the scheduling experience. The system continuously monitors a user's position and traffic conditions, automatically adjusting departure time recommendations and sending timely notifications so users always know when it's time to leave, leaving no mental math required.
+We also built this with the whole person in mind. The app respects softer scheduling preferences like preferred sleep windows, personal downtime, and recurring routines, recognizing that a good schedule isn't just about productivity — it's about wellbeing too.
+Finally, we wanted to help users make the most of their free time by surfacing local events and activities tailored to their interests and open time slots.
+The result is a calendar that doesn't just record your life, but also help you live it more intentionally.
           </Typography>
         </Box>
 
@@ -696,22 +698,76 @@ function TeamSection() {
   );
 }
 
-// Placeholder resources section for future project materials
+// Category badge colors for source types
+const SOURCE_CATEGORY_STYLES: Record<string, { bg: string; color: string; border: string }> = {
+  "Problem-Domain Book": { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe" },
+  "Project Related":     { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+  "Reference Article":   { bg: "#fdf4ff", color: "#7e22ce", border: "#e9d5ff" },
+};
+
+// References, sources, and project materials
 function ResourcesSection() {
+  const sources = [
+    {
+      category: "Problem-Domain Book",
+      title: "Pinedo — Scheduling: Theory, Algorithms, and Systems (6th ed.)",
+      citation: "M. Pinedo, Scheduling: Theory, Algorithms, and Systems, 6th ed. Springer.",
+      desc: "Graduate-level foundation on single/multiprocessor scheduling, resource constraints, and objective design (lateness, tardiness). Useful for modeling hard constraints (no-overlap, deadlines) and soft penalties (preferences/change cost), plus case studies that map well to calendar-style optimization and latency targets.",
+      url: null,
+    },
+    {
+      category: "Project Related",
+      title: "OAuth2 with Password (and Hashing), Bearer with JWT Tokens",
+      citation: '"OAuth2 with password (and hashing), bearer with JWT tokens," FastAPI. Accessed Feb. 18, 2026.',
+      desc: "Documentation for implementing hashes to protect sensitive data. Works with FastAPI — supports salting, hashing, password verification, and returning authenticated users.",
+      url: "https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/",
+    },
+    {
+      category: "Project Related",
+      title: "IETF RFC 5545 — iCalendar Core Object Specification",
+      citation: "IETF RFC 5545: Internet Calendaring and Scheduling Core Object Specification (iCalendar).",
+      desc: "Authoritative standard defining events, recurrences (RRULE), exceptions (EXDATE), time zones (VTIMEZONE), alarms, and free/busy info. Essential for modeling hard/soft constraints and ensuring interoperability with Google/Microsoft APIs, especially around recurrence semantics and daylight-saving transitions.",
+      url: "https://icalendar.org/RFC-Specifications/iCalendar-RFC-5545/",
+    },
+    {
+      category: "Project Related",
+      title: "The React Mega-Tutorial, Chapter 6: Building an API Client",
+      citation: 'M. Grinberg, "The React Mega-Tutorial, Chapter 6: Building an API Client," miguelgrinberg.com. Accessed Feb. 18, 2026.',
+      desc: "Used as inspiration for the API client structure connecting backend and frontend. The pattern reduces boilerplate and facilitates component reusability.",
+      url: "https://blog.miguelgrinberg.com/post/the-react-mega-tutorial-chapter-6-building-an-api-client",
+    },
+    {
+      category: "Reference Article",
+      title: "Fielding — Architectural Styles and the Design of Network-Based Software Architectures",
+      citation: 'R. T. Fielding, "Architectural Styles and the Design of Network-Based Software Architectures," ACM. Accessed Feb. 18, 2026.',
+      desc: "Defines how components of a distributed web system should be built, how intermediary components should behave to reduce latency, and how security should be enforced — including how backends and frontends should interact and stay separate.",
+      url: "https://dl.acm.org/doi/10.5555/932295",
+    },
+    {
+      category: "Reference Article",
+      title: "Calendar.help: Designing a Workflow-Based Scheduling Agent with Humans in the Loop",
+      citation: "J. Cranshaw et al., \"Calendar.help,\" in Proc. CHI '17, ACM, New York, NY, USA, pp. 2382–2393. https://doi.org/10.1145/3025453.3025780",
+      desc: "Describes a deployed assistant that structures scheduling into micro-workflows, automates common cases, and escalates edge cases. Great evidence for mixed-initiative UX and human-in-the-loop design patterns for AI calendar agents.",
+      url: "https://doi.org/10.1145/3025453.3025780",
+    },
+  ];
+
   return (
     <Box id="resources" sx={{ py: 10, bgcolor: "#f8fafc" }}>
       <Container maxWidth="lg">
-        <Box sx={{ textAlign: "center", mb: 6 }}>
+
+        {/* Section heading */}
+        <Box sx={{ textAlign: "center", mb: 7 }}>
           <Chip
             label="Resources"
             size="small"
             icon={<BookOpen size={13} />}
             sx={{
               mb: 2,
-              bgcolor: `rgba(90,133,226,0.1)`,
+              bgcolor: "rgba(90,133,226,0.1)",
               color: PRIMARY_DARK,
               fontWeight: 600,
-              border: `1px solid rgba(90,133,226,0.25)`,
+              border: "1px solid rgba(90,133,226,0.25)",
             }}
           />
           <Typography
@@ -722,27 +778,100 @@ function ResourcesSection() {
             Resources
           </Typography>
           <Typography variant="body1" sx={{ color: "#64748b" }}>
-            Documentation, reports, and project materials for CS 426 — Team 32.
+            References, documentation, and project materials for CS 426 — Team 32.
           </Typography>
         </Box>
 
+        {/* Source reference cards */}
+        <Grid container spacing={3} sx={{ mb: 7 }}>
+          {sources.map((src) => {
+            const style = SOURCE_CATEGORY_STYLES[src.category];
+            return (
+              <Grid key={src.title} size={{ xs: 12, md: 6 }}>
+                <Box
+                  sx={{
+                    p: 3,
+                    borderRadius: 3,
+                    bgcolor: "#fff",
+                    border: "1px solid #e2e8f0",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1.5,
+                    transition: "box-shadow 0.2s",
+                    "&:hover": { boxShadow: "0 4px 20px rgba(0,0,0,0.07)" },
+                  }}
+                >
+                  {/* Category badge */}
+                  <Chip
+                    label={src.category}
+                    size="small"
+                    sx={{
+                      alignSelf: "flex-start",
+                      bgcolor: style.bg,
+                      color: style.color,
+                      border: `1px solid ${style.border}`,
+                      fontSize: "0.68rem",
+                      fontWeight: 600,
+                    }}
+                  />
+
+                  {/* Title and optional link */}
+                  <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: "#0f172a", lineHeight: 1.4 }}>
+                      {src.title}
+                    </Typography>
+                    {src.url && (
+                      <MuiLink
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ color: PRIMARY, flexShrink: 0, mt: 0.25 }}
+                        aria-label={`Open ${src.title}`}
+                      >
+                        <ExternalLink size={15} />
+                      </MuiLink>
+                    )}
+                  </Box>
+
+                  {/* Description */}
+                  <Typography variant="body2" sx={{ color: "#64748b", lineHeight: 1.7, flex: 1 }}>
+                    {src.desc}
+                  </Typography>
+
+                  {/* Citation in monospace */}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#94a3b8",
+                      fontFamily: "monospace",
+                      fontSize: "0.68rem",
+                      lineHeight: 1.5,
+                      borderTop: "1px solid #f1f5f9",
+                      pt: 1.5,
+                    }}
+                  >
+                    {src.citation}
+                  </Typography>
+                </Box>
+              </Grid>
+            );
+          })}
+        </Grid>
+
+        <Divider sx={{ mb: 7 }} />
+
+        {/* Project materials */}
+        <Box sx={{ textAlign: "center", mb: 4 }}>
+          <Typography variant="h5" fontWeight={700} sx={{ color: "#0f172a" }}>
+            Project Materials
+          </Typography>
+        </Box>
         <Grid container spacing={3} justifyContent="center">
           {[
-            {
-              title: "Project Report",
-              desc: "Final technical documentation and system design overview.",
-              status: "Coming soon",
-            },
-            {
-              title: "Demo Video",
-              desc: "A walkthrough of the AI Calendar Agent in action.",
-              status: "Coming soon",
-            },
-            {
-              title: "Source Code",
-              desc: "Full project repository including frontend and backend.",
-              status: "Coming soon",
-            },
+            { title: "Project Poster", desc: "Our CS 426 project poster summarizing the AI Calendar Agent's goals, design, and results." },
+            { title: "Demo Video",     desc: "A walkthrough of the AI Calendar Agent in action." },
+            { title: "Source Code",    desc: "Full project repository including frontend and backend." },
           ].map((res) => (
             <Grid key={res.title} size={{ xs: 12, sm: 6, md: 4 }}>
               <Box
@@ -757,25 +886,19 @@ function ResourcesSection() {
                 <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
                   {res.title}
                 </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ color: "#64748b", lineHeight: 1.7, mb: 2 }}
-                >
+                <Typography variant="body2" sx={{ color: "#64748b", lineHeight: 1.7, mb: 2 }}>
                   {res.desc}
                 </Typography>
                 <Chip
-                  label={res.status}
+                  label="Coming soon"
                   size="small"
-                  sx={{
-                    bgcolor: "#f1f5f9",
-                    color: "#64748b",
-                    fontSize: "0.7rem",
-                  }}
+                  sx={{ bgcolor: "#f1f5f9", color: "#64748b", fontSize: "0.7rem" }}
                 />
               </Box>
             </Grid>
           ))}
         </Grid>
+
       </Container>
     </Box>
   );
