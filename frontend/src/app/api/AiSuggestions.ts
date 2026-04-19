@@ -35,24 +35,22 @@ export async function getDayAiSuggestions(
     day: "numeric",
   });
 
-  // Static mock suggestions — the real backend will generate these from the LLM
-  // using the actual schedule context passed in the request body.
   return {
     suggestions: [
       {
         id: "mock-ai-1",
         category: "Schedule Insight",
-        text: `You have ${eventCount} event${eventCount !== 1 ? "s" : ""} on ${dateLabel}. Consider blocking a 30-minute buffer between back-to-back meetings to give yourself time to decompress and prepare.`,
+        title: `You have ${eventCount} event${eventCount !== 1 ? "s" : ""} on ${dateLabel}. Consider blocking a 30-minute buffer between back-to-back meetings to give yourself time to decompress and prepare.`,
       },
       {
         id: "mock-ai-2",
         category: "Tip",
-        text: "Your morning looks relatively open. High-focus tasks like deep work or creative projects are best tackled before midday when cognitive energy peaks.",
+        title: "Your morning looks relatively open. High-focus tasks like deep work or creative projects are best tackled before midday when cognitive energy peaks.",
       },
       {
         id: "mock-ai-3",
         category: "Travel Alert",
-        text: "If any of your events require travel, check traffic conditions 30–45 minutes before departure to avoid delays during peak hours.",
+        title: "If any of your events require travel, check traffic conditions 30–45 minutes before departure to avoid delays during peak hours.",
       },
     ],
   };

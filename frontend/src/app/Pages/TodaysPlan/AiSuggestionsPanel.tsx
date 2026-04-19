@@ -4,7 +4,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { alpha } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
-import { Lightbulb, Sparkles, TriangleAlert, Info } from "lucide-react";
+import { Lightbulb, TriangleAlert, Info } from "lucide-react";
 import type { DailyTimelineItem } from "../../Types/Calendar";
 import type { AiSuggestion } from "../../services/contracts";
 import { dataService } from "../../services";
