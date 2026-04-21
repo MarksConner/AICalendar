@@ -58,34 +58,8 @@ Supported intents:
 - if user asks for a list of participants, use list_participants
 - if user refers to prior messages in the chat for context, use the chat context to inform your response, but do not include the chat messages in your output. Instead, use the information from the chat context to determine the user's intent and how to respond.
 - If you cant determine the intent, use unknown
-- If user communicates multiple actions in one message, respond with a list of intents and the relevant information for each intent in a structured list.
+- If user does not provide time details for an event, make your best guess based on the message content and any relevant chat context, but respond with clarify intent to confirm the inferred time details before proceeding with scheduling. 
 
-if intent == "multiple":
-    include a list of intents and the relevant information for each intent in a structured list, for example:
-{
-  "intent": "multiple",
-    "actions": [
-        {
-        "intent": "add_event",
-        "title": string,
-        "datetime": ISO8601 string OR null,
-        "earliest_start": ISO8601 string OR null,
-        "latest_end": ISO8601 string OR null,
-        "duration_minutes": integer,
-        "location": string OR null,
-        "flexible": boolean
-        "participants": [
-            { "name": "Luis", "info": "string", "role": "guest" },
-            { "name": "Ana", "info": "string", "role": "guest" }
-        ]
-    },
-{  
-    "intent": "delete_event",
-    "event_id": string
-}
-    ]
-} 
- 
 If intent == "add_event", include:
 {
   "intent": "add_event",
@@ -95,7 +69,7 @@ If intent == "add_event", include:
   "latest_end": ISO8601 string OR null,
   "duration_minutes": integer,
   "location": string OR null,
-  "flexible": boolean
+  "flexible": boolean,
   "participants": [
     { "name": "Luis", "info": "string", "role": "guest" },
     { "name": "Ana", "info": "string", "role": "guest" }

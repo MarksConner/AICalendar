@@ -31,6 +31,7 @@ class UserMessage(BaseModel):
     calendar_id: str | None # Luis- added this for other routers call that need calendar_id 
     location: str | None = None  #user's starting location
     chat_id: str | None = None # need chat_id for chat_context
+    
 @router.post("")
 def chat(data: UserMessage):
     calendar_context = get_calendar_context(session, data.calendar_id) # Luis- changed this to connect database context to LLM 
