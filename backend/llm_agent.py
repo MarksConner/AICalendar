@@ -46,7 +46,7 @@ Current time: """ + current_time_text + """
 You MUST respond in valid JSON format.
 
 Supported intents:
-- add_event, assign a priority rank to the event based on how important it seems and how much the user emphasizes it. Use a scale of 0-10, with 10 being highest priority. If the user doesn't provide enough info to determine priority, make your best guess based on the content and tone of the message.
+- add_event, assign a priority rank to the event based on how important it seems and how much the user emphasizes it. Use high priority or low priority. If the user doesn't provide enough info to determine priority, make your best guess based on the content and tone of the message. if there is already a event for the same time, use clarify intent to ask the user if this new event is higher priority than the existing event, and if they want to reschedule or delete the existing event to accommodate the new one, and suggest moving the lower priority to another time.
 - traffic_info
 - if ordinary conversation use chat 
 - if user intent is to update an event use update_event and include the updated event details. 
