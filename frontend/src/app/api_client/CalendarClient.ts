@@ -114,4 +114,11 @@ export default class CalendarClient {
         body: formData,
     });
     }   
+   
+    async exportCalendarAPI(calendar_id: string): Promise<Response> {
+        return this.request({
+            method: "GET",
+            url: `/calendar/export/${calendar_id}`,
+        });
+    }
 }

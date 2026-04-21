@@ -10,7 +10,7 @@ from app.api import messages_api
 
 # LLM agent for AI suggestions and chatbot. Backend Folder
 from backend.chat import router as chat_router
-from backend.api_llm_agent import router as ai_suggestions_router
+from backend.llm_routes import router as  ai_suggestions_router
 
 app = FastAPI()
 

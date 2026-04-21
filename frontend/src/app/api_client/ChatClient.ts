@@ -44,19 +44,23 @@ export default class ChatClient {
     });
   }
 
-  async sendMessageAPI(chat_id: string, content: string): Promise<Response> {
-    return this.request({
-      method: "POST",
-      url: "/messages/send_message",
-      body: { chat_id, content, sender_is: true},
-    });
-  }
-  
-  async askAI(message: string, calendar_id: string): Promise<Response> {
+ async sendMessageAPI(
+  chat_id: string,
+  content: string,
+  sender_is: boolean
+): Promise<Response> {
   return this.request({
     method: "POST",
-    url: "/chat",
-    body: { message, calendar_id},
+    url: "/messages/send_message",
+    body: { chat_id, content, sender_is },
   });
 }
+
+  async askAI(message: string, calendar_id: string, chat_id: string): Promise<Response> {
+    return this.request({
+      method: "POST",
+      url: "/chat",
+      body: { message, calendar_id, chat_id},
+    });
+  }
 }

@@ -4,11 +4,12 @@ import uuid
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from backend.llm_agent import ask_llm
+from backend.llm_agent import ask_llm, llm_summarize_chat_history
 from backend.mapbox import get_directions
 from backend.schedule import Schedule
 from backend.errors import ConflictError
 from app.services.calendar_service import get_calendar_context
+from app.services.chat_service import get_chat_context, more_than_8_messages, summarize_chat_history
 from app.services.events_service import (create_event, update_event, remove_event, add_event_participant,
                                         get_participants_for_event,remove_event_participant, get_participant_details, 
                                         get_participant_location
@@ -29,15 +30,21 @@ class UserMessage(BaseModel):
     message: str
     calendar_id: str | None # Luis- added this for other routers call that need calendar_id 
     location: str | None = None  #user's starting location
-
+    chat_id: str | None = None # need chat_id for chat_context
 
 @router.post("")
 def chat(data: UserMessage):
     calendar_context = get_calendar_context(session, data.calendar_id) # Luis- changed this to connect database context to LLM 
-
+    chat_context = get_chat_context(session, data.chat_id ) # get chat history for better context. we can also summarize this if it gets too long.
     #ask the LLM
-    llm_output = ask_llm(data.message, calendar_context=calendar_context)
-    print("RAW LLM OUTPUT:", llm_output) # debug print 
+    llm_output = ask_llm(data.message, calendar_context=calendar_context, chat_context=chat_context)
+
+# chat context needs chat_id. to pass to more_than8_messages
+    if more_than_8_messages(session, chat_id= uuid.UUID(data.chat_id)):
+        summary = llm_summarize_chat_history(chat_context)
+        summarize_chat_history(session, chat_id= uuid.UUID(data.chat_id)
+                               )
+
     
     if not llm_output:
         return {"error": "LLM returned an empty response"}

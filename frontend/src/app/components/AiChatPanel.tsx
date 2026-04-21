@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -12,12 +12,15 @@ import {
 import ChatClient from "../api_client/ChatClient";
 import { ThinkingSymbol } from "../design_system/components/ui/ThinkingSymbol";
 
+// Chat message construct
 type ChatMessage = {
   id: string;
   role: "assistant" | "user";
   text: string;
 };
 
+
+// Initial message, used when chat is empty. Type ChatMessage array
 const initialMessages: ChatMessage[] = [
   {
     id: "welcome",
@@ -26,15 +29,24 @@ const initialMessages: ChatMessage[] = [
   },
 ];
 
+const CHAT_ID_KEY = "chat_id";
+
 export const AiChatPanel = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages); // First message in messages is the initial state.
   const [draft, setDraft] = useState("");
   const [chatId, setChatId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicDraft, setHasMicDraft] = useState(false);
 
   const chatClient = useMemo(() => new ChatClient(), []);
+
+
+// Wrapp
+  const resetToWelcome = () => {
+    setMessages(initialMessages);
+  };
 
   const addAssistantMessage = (text: string) => {
     setMessages((prev) => [
@@ -47,9 +59,91 @@ export const AiChatPanel = () => {
     ]);
   };
 
+  const parseSenderIs = (value: any): boolean | null => {
+    if (value === true) return true;
+    if (value === false) return false;
+
+    if (value === 1) return true;
+    if (value === 0) return false;
+
+    if (value === "true") return true;
+    if (value === "false") return false;
+
+    if (value === "1") return true;
+    if (value === "0") return false;
+
+    return null;
+  };
+
+  const getMessageRole = (msg: any): "user" | "assistant" => {
+    const senderIs = parseSenderIs(msg.sender_is);
+
+    if (senderIs !== null) {
+      return senderIs ? "user" : "assistant";
+    }
+
+    if (msg.role === "user") return "user";
+    if (msg.role === "assistant") return "assistant";
+
+    return "assistant";
+  };
+
+  useEffect(() => {
+    const savedChatId = localStorage.getItem(CHAT_ID_KEY);
+
+    if (!savedChatId) {
+      resetToWelcome();
+      return;
+    }
+
+    setChatId(savedChatId);
+    loadPreviousMessages(savedChatId);
+  }, []);
+
+  async function loadPreviousMessages(existingChatId: string) {
+    setIsHistoryLoading(true);
+
+    try {
+      const response = await chatClient.getChatHistoryAPI(existingChatId);
+
+      if (!response.ok) {
+        localStorage.removeItem(CHAT_ID_KEY);
+        setChatId(null);
+        resetToWelcome();
+        return;
+      }
+
+      const historyData = await response.json();
+
+      const history = Array.isArray(historyData)
+        ? historyData
+        : Array.isArray(historyData.messages)
+        ? historyData.messages
+        : [];
+
+      if (history.length === 0) {
+        resetToWelcome();
+        return;
+      }
+
+      setMessages(
+        history.map((msg: any, index: number) => ({
+          id: String(msg.message_id ?? msg.id ?? `message-${index}`),
+          role: getMessageRole(msg),
+          text: String(msg.text ?? msg.content ?? ""),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load previous messages:", error);
+      resetToWelcome();
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }
+
   const sendCurrentDraft = async () => {
     const trimmed = draft.trim();
-    if (!trimmed || isLoading) return;
+    if (!trimmed || isLoading || isHistoryLoading) return;
 
     setMessages((prev) => [
       ...prev,
@@ -66,7 +160,7 @@ export const AiChatPanel = () => {
         return;
       }
 
-      let currentChatId = chatId;
+      let currentChatId = chatId || localStorage.getItem(CHAT_ID_KEY);
 
       if (!currentChatId) {
         const createResponse = await chatClient.createChatAPI(trimmed);
@@ -79,12 +173,27 @@ export const AiChatPanel = () => {
         const createData = await createResponse.json();
         console.log("createChatAPI data:", createData);
 
-        currentChatId = createData.chat_id;
+        currentChatId =
+          typeof createData.chat_id === "string"
+            ? createData.chat_id
+            : typeof createData.chat?.chat_id === "string"
+            ? createData.chat.chat_id
+            : typeof createData.chat_id?.chat_id === "string"
+            ? createData.chat_id.chat_id
+            : null;
+
+        if (!currentChatId) {
+          addAssistantMessage("Chat was created but chat_id was invalid.");
+          return;
+        }
+
+        localStorage.setItem(CHAT_ID_KEY, currentChatId);
         setChatId(currentChatId);
       } else {
         const sendResponse = await chatClient.sendMessageAPI(
           currentChatId,
-          trimmed
+          trimmed,
+          true
         );
 
         if (!sendResponse.ok) {
@@ -96,16 +205,33 @@ export const AiChatPanel = () => {
         console.log("sendMessageAPI data:", sendData);
       }
 
-      const aiResponse = await chatClient.askAI(trimmed, calendarId);
+      const aiResponse = await chatClient.askAI(trimmed, calendarId,chatId);
 
       if (!aiResponse.ok) {
         addAssistantMessage("Failed to get AI response.");
         return;
       }
-      
+
       const aiData = await aiResponse.json();
       console.log("askAI data:", aiData);
-      addAssistantMessage(aiData.response);
+
+      const assistantText = String(
+        aiData.response ?? aiData.message ?? "No response returned."
+      );
+
+      addAssistantMessage(assistantText);
+
+      if (currentChatId) {
+        const saveAssistantResponse = await chatClient.sendMessageAPI(
+          currentChatId,
+          assistantText,
+          false
+        );
+
+        if (!saveAssistantResponse.ok) {
+          console.error("Failed to persist assistant message.");
+        }
+      }
     } catch (error) {
       console.error(error);
       addAssistantMessage("Something went wrong while sending the message.");
@@ -120,7 +246,7 @@ export const AiChatPanel = () => {
   };
 
   const handleMicClick = async () => {
-    if (isLoading) return;
+    if (isLoading || isHistoryLoading) return;
 
     if (isRecording) {
       stopMicrophoneInput();
@@ -185,9 +311,26 @@ export const AiChatPanel = () => {
             }}
           >
             <Typography variant="body2">{message.text}</Typography>
-            
           </Box>
         ))}
+
+        {(isLoading || isHistoryLoading) && (
+          <Box
+            sx={{
+              alignSelf: "flex-start",
+              maxWidth: "85%",
+              px: 1.5,
+              py: 1,
+              borderRadius: 2,
+              bgcolor: "background.paper",
+              color: "text.primary",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <ThinkingSymbol />
+          </Box>
+        )}
       </Box>
 
       <Box
@@ -204,14 +347,16 @@ export const AiChatPanel = () => {
           }}
           sx={{ flex: 1 }}
         />
-          {isLoading && <ThinkingSymbol />}
-        <Button type="submit" disabled={!draft.trim() || isLoading}>
+        <Button
+          type="submit"
+          disabled={!draft.trim() || isLoading || isHistoryLoading}
+        >
           Send
         </Button>
         <Button
           type="button"
           onClick={handleMicClick}
-          disabled={isLoading}
+          disabled={isLoading || isHistoryLoading}
           sx={{
             backgroundColor: isRecording ? "error.main" : undefined,
             color: isRecording ? "error.contrastText" : undefined,
@@ -221,10 +366,7 @@ export const AiChatPanel = () => {
           }}
         >
           {isRecording ? "⏹" : hasMicDraft ? "📨" : "🎤"}
-             
         </Button>
-        
-    
       </Box>
     </Stack>
   );

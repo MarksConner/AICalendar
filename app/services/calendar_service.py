@@ -1,5 +1,4 @@
 from typing import Optional
-from app.db import SessionLocal
 from app.models.calendar import Calendar
 from app.models.events  import Events
 from app.models.event_participants import EventParticipants
@@ -95,12 +94,7 @@ def get_calendars_by_user_id(session: Session, user_id: UUID) -> list[Calendar]:
 # Basically it returns a dictionary with a list of events for the calendar, where each event is represented as a dictionary with its details (id, name, start time, end time, location). This context can be used to display the calendar and its events in the frontend.
 # it is returned as a dictionary because the calendar context may include more than just the list of events in the future, such as calendar settings, user preferences, etc. By returning a dictionary, we can easily expand the context to include additional information without changing the structure of the response.
 def get_calendar_context(session: Session, calendar_id: str) -> dict:
-    events = (
-        session.query(Events)
-        .filter(Events.calendar_id == calendar_id)
-        .order_by(Events.start_time.asc())
-        .all()
-    )
+    events = (session.query(Events).filter(Events.calendar_id == calendar_id).order_by(Events.start_time.asc()).all())
 
     return {
         "events": [

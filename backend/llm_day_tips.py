@@ -2,13 +2,10 @@ from typing import Any, List, Optional
 from uuid import uuid4
 import json
 import re
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-
 from backend.llm_agent import ask_llm
 
-router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 class EventForSuggestion(BaseModel):
@@ -44,6 +41,7 @@ class EventForSuggestion(BaseModel):
         return self.description or self.event_description
 
 
+# SuggestionRequest needs the day of the event we are going to request and all the events on it.
 class SuggestionRequest(BaseModel):
     date: str
     events: List[EventForSuggestion] = []
@@ -181,10 +179,3 @@ def parse_llm_response(llm_output: str) -> List[SuggestionItem]:
 
     return suggestions
 
-
-@router.post("/day-suggestions", response_model=SuggestionResponse)
-def get_day_suggestions(request: SuggestionRequest):
-    prompt = generate_prompt(request.date, request.events)
-    llm_output = ask_llm(prompt)
-    suggestions = parse_llm_response(llm_output)
-    return SuggestionResponse(suggestions=suggestions)

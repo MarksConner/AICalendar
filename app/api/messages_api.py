@@ -25,7 +25,10 @@ def debug_messages():
 
 @router.post("/send_message", response_model=MessageResponse)
 def send_message(new_message: SendMessage, db: Session = Depends(get_db)):
-    message = create_message(db,new_message.chat_id,new_message.content,True)
+    if(new_message.sender_is == True):
+        message = create_message(db,new_message.chat_id,new_message.content,True)
+    else:
+        message = create_message(db,new_message.chat_id,new_message.content,False)
     if not message:
         raise HTTPException(status_code=400, detail="Message could not be created")
 

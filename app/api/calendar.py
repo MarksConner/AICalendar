@@ -11,6 +11,10 @@ from app.services.calendar_service import create_calendar, get_calendars_by_user
 from app.services.events_service import create_event
 from app.services.ics_parser import parse_ics
 
+# Export calendar to ics 
+from fastapi.responses import Response
+from app.services.ics_exporter import export_calendar_to_ics
+
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
 
@@ -110,3 +114,16 @@ def get_day_hints_route(
         duration_minutes=durationMinutes,
     )
     return hints
+
+#Export calendar to ics
+@router.get("/export/{calendar_id}")
+def export_calendar(calendar_id: str):
+    ics_content = export_calendar_to_ics(calendar_id)
+
+    return Response(
+        content=ics_content,
+        media_type="text/calendar",
+        headers={
+            "Content-Disposition": f'attachment; filename="calendar-{calendar_id}.ics"'
+        },
+    )

@@ -118,6 +118,7 @@ class ParticipantsForEvent(BaseModel):
 class SendMessage(BaseModel):
     chat_id: UUID
     content: str
+    sender_is: bool
 
 class MessageResponse(BaseModel):
     message_id: UUID

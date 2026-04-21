@@ -168,7 +168,6 @@ export const CalendarSidebar = () => {
       >
         Create
       </Button>
-
       <CreateEventDialog
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
@@ -184,6 +183,7 @@ export const CalendarSidebar = () => {
         <Typography variant="caption" color="text.secondary">
           My calendars
         </Typography>
+
         <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
             {calendars.map((calendar) => {const isSelected = selectedCalendarId === calendar.calendar_id;
             return (
@@ -210,9 +210,39 @@ export const CalendarSidebar = () => {
                     bgcolor: "action.hover",
                     color: "text.primary",
                   },
+                  
                 }}
+
               >
                 <Typography variant="body2">{calendar.calendar_name}</Typography>
+                  <Button
+                    sx={{
+                      ml: "auto",
+                      minWidth: 0,
+                      px: 1,
+                    }}
+                    size="sm"
+                    variant="ghost"
+                    startIcon={<span>↓</span>}
+                    onClick={async () => {
+                      if (!calendar.calendar_id) return;
+                      const calendarClient = new CalendarClient();
+                      const response = await calendarClient.exportCalendarAPI(calendar.calendar_id);
+                      if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `calendar-${calendar.calendar_id}.ics`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                      } else {
+                        console.error("Failed to export calendar");
+                      }
+                    }}>
+                    Export
+                  </Button>
               </ListItemButton>
             );
           })}

@@ -1,4 +1,3 @@
-from datetime import datetime
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -58,8 +57,8 @@ def get_chats_by_user_id(session: Session, user_id: UUID) -> list[Chat]:
     return (session.query(Chat).filter(Chat.user_id == user_id).order_by(Chat.created_at.desc()).all())
 
 #Add a message to the chat.
-def add_message_to_chat(session: Session,chat_id: UUID,sender_id: UUID,content: str,)->Messages:
-    new_message = Messages(chat_id=chat_id, sender_id=sender_id,content=content,sent_at=datetime.utcnow(),)
+def add_message_to_chat(session: Session,chat_id: UUID,content: str,)->Messages:
+    new_message = Messages(chat_id=chat_id,content=content,sent_at=datetime.utcnow(),)
     session.add(new_message)
     session.commit()
     session.refresh(new_message)
@@ -71,10 +70,60 @@ def get_messages_by_chat_id(session: Session, chat_id: UUID) -> list[Messages]:
 
 
 def delete_message_from_chat(session: Session, message_id: UUID, user_id: UUID) -> bool:
-    message = (session.query(Messages).filter(Messages.message_id == message_id, Messages.sender_id == user_id).one_or_none())
+    message = (session.query(Messages).filter(Messages.message_id == message_id).one_or_none())
     if message is None:
         raise ValueError("Message not found")
 
     session.delete(message)
     session.commit()
     return True
+
+
+
+# Get all messages in a chat, ordered by sent_at ascending, to provide context for the next message generation.
+# This will be fed to the LLM to have context of user request and improve the response quality.
+# returns a dict json object so it can be serialized and sent to the LLM
+def get_chat_context(session, chat_id):
+    messages = (session.query(Messages).filter(Messages.chat_id == chat_id).order_by(Messages.sent_at.asc()).all())
+    return [{"message_id": str(m.message_id),"chat_id": str(m.chat_id), "content": m.content,"sender_is": m.sender_is,"created_at": m.sent_at.isoformat() if m.sent_at else None,}for m in messages]
+
+# modify chat messages.
+def update_message_content(session: Session, message_id: UUID, user_id: UUID, new_content: str) -> bool:
+    message = session.query(Messages).filter(Messages.message_id == message_id).one_or_none()
+    if message is None:
+        raise ValueError("Message not found")
+
+    message.content = new_content
+    session.commit()
+    return True
+
+
+# summarizes chat history for a given chat id
+def summarize_chat_history(session: Session, chat_id: UUID) -> str:
+    messages = (session.query(Messages).filter(Messages.chat_id == chat_id).order_by(Messages.sent_at.asc()).all())
+
+    if not messages:
+        return ""
+
+    if more_than_8_messages(session, chat_id):
+        messages = messages[:-8]
+
+    return " ".join(message.content for message in messages)
+
+
+def more_than_8_messages(session: Session, chat_id: UUID) -> bool:
+    messages = (
+        session.query(Messages)
+        .filter(Messages.chat_id == chat_id)
+        .order_by(Messages.sent_at.asc())
+        .all()
+    )
+
+    count = 0
+    for message in messages:
+        count += 1
+        if count > 8:
+            return True
+
+    return False
+
