@@ -13,6 +13,7 @@ import { EventDetailsDialog } from "./EventDetailsDialog";
 import { MonthView } from "./MonthView";
 import { WeekGrid } from "./WeekGrid";
 import { useDayPlanner } from "./useDayPlanner";
+import { useEventLocation } from "../../hooks/useEventLocation";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ const getPageSubtitle = (view: CalendarView, isToday: boolean, dateLabel: string
 export const TodaysPlanPage = () => {
   const { selectedDate, selectedView, navigateToDay } = useCalendar();
   const planner = useDayPlanner({ selectedDate, selectedView });
+  const eventLocation = useEventLocation(planner.selectedEvent, planner.isEventDetailsOpen);
 
   const handleNavigateToDay = useCallback(
     (date: Date) => {
@@ -168,6 +170,7 @@ export const TodaysPlanPage = () => {
         editDescription={planner.editDescription}
         editEndTime={planner.editEndTime}
         editError={planner.eventEditError}
+        editLocation={planner.editLocation}
         editStartTime={planner.editStartTime}
         editTitle={planner.editTitle}
         onClose={planner.handleCloseEventDetails}
@@ -177,8 +180,13 @@ export const TodaysPlanPage = () => {
         onSaveEdit={planner.handleSaveEventEdit}
         onSetEditDescription={planner.setEditDescription}
         onSetEditEndTime={planner.setEditEndTime}
+        onSetEditLocation={planner.setEditLocation}
         onSetEditStartTime={planner.setEditStartTime}
         onSetEditTitle={planner.setEditTitle}
+        eventLat={eventLocation.eventLat}
+        eventLng={eventLocation.eventLng}
+        travelTimeMin={eventLocation.travelTimeMin}
+        isTravelLoading={eventLocation.isLoading}
       />
 
       <AddTaskModal
@@ -188,10 +196,12 @@ export const TodaysPlanPage = () => {
         isLoadingHints={planner.isLoadingHints}
         isOpen={planner.isAddOpen}
         newDescription={planner.newDescription}
+        newLocation={planner.newLocation}
         newTime={planner.newTime}
         newTitle={planner.newTitle}
         onClose={planner.handleCloseAdd}
         onDescriptionChange={planner.setNewDescription}
+        onLocationChange={planner.setNewLocation}
         onSave={planner.handleAddTask}
         onTimeChange={planner.setNewTime}
         onTitleChange={planner.setNewTitle}

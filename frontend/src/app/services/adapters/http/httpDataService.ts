@@ -11,10 +11,11 @@ import type {
   DaySchedulingHints,
   DaySchedulingHintsRequest,
   LoginResponse,
+  TravelTimeResponse,
   UpdateDayEventInput,
   AddEventParticipantInput,
   ParticipantsForEvent,
-  EventParticipant 
+  EventParticipant
 } from "../../contracts";
 import {startMicrophoneInput, stopMicrophoneInput,} from "../../tts/mic_parsing";
 import { requestJson } from "./httpClient";
@@ -93,6 +94,8 @@ type RawDayEvent = {
   full_address?: string | null;
   flexible?: boolean;
   travel_time_min?: number;
+  geo_latitude?: number | null;
+  geo_longitude?: number | null;
 };
 
 const normalizeTimelineItem = (raw: RawDayEvent): DailyTimelineItem => {
@@ -117,6 +120,8 @@ const normalizeTimelineItem = (raw: RawDayEvent): DailyTimelineItem => {
     location: raw.location ?? raw.full_address ?? null,
     flexible: raw.flexible ?? false,
     travel_time_min: raw.travel_time_min ?? 0,
+    geo_latitude: raw.geo_latitude ?? null,
+    geo_longitude: raw.geo_longitude ?? null,
   };
 };
 
@@ -291,6 +296,12 @@ export const httpDataService: AppDataService = {
     stopMicrophoneInput();
   },
 
+
+  getTravelTime(eventId: string, fromLat: number, fromLng: number) {
+    return requestJson<TravelTimeResponse>(
+      `/events/event_id/${eventId}/travel_time?from_lat=${fromLat}&from_long=${fromLng}`
+    );
+  },
 
   getDayAiSuggestions(date, items: DailyTimelineItem[]) {
     return requestJson<AiSuggestionsResponse>("/ai/day-suggestions", {

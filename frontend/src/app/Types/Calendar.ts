@@ -12,6 +12,8 @@ export interface Event {
   flexible: boolean;
   travel_time_min: number;
   description?: string;       // UI extension — not sent by backend, kept for display
+  geo_latitude?: number | null;
+  geo_longitude?: number | null;
 }
 
 // Aliases used by the view layers — both map to the same shape.

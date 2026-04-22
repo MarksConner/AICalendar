@@ -41,6 +41,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   const [newTitle, setNewTitle] = useState("");
   const [newTime, setNewTime] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [newLocation, setNewLocation] = useState("");
   const [addTaskError, setAddTaskError] = useState<string | null>(null);
   const [hintError, setHintError] = useState<string | null>(null);
   const [persistError, setPersistError] = useState<string | null>(null);
@@ -53,6 +54,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editLocation, setEditLocation] = useState("");
   const [eventEditError, setEventEditError] = useState<string | null>(null);
   const [schedulingHints, setSchedulingHints] =
     useState<DaySchedulingHints | null>(null);
@@ -350,6 +352,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     setNewTitle("");
     setNewTime("");
     setNewDescription("");
+    setNewLocation("");
     setAddTaskError(null);
     setHintError(null);
     setSchedulingHints(null);
@@ -369,6 +372,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     setEditStartTime(extractTimeHHMM(eventToOpen.start));
     setEditEndTime(extractTimeHHMM(eventToOpen.end));
     setEditDescription(eventToOpen.description ?? "");
+    setEditLocation(eventToOpen.location ?? "");
     setIsEditingEvent(false);
     setEventEditError(null);
     setSelectedEventId(eventId);
@@ -388,6 +392,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     setEditStartTime(extractTimeHHMM(selectedEvent.start));
     setEditEndTime(extractTimeHHMM(selectedEvent.end));
     setEditDescription(selectedEvent.description ?? "");
+    setEditLocation(selectedEvent.location ?? "");
     setEventEditError(null);
     setIsEditingEvent(true);
   };
@@ -398,6 +403,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       setEditStartTime(extractTimeHHMM(selectedEvent.start));
       setEditEndTime(extractTimeHHMM(selectedEvent.end));
       setEditDescription(selectedEvent.description ?? "");
+      setEditLocation(selectedEvent.location ?? "");
     }
     setEventEditError(null);
     setIsEditingEvent(false);
@@ -442,12 +448,14 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     }
 
     const normalizedDescription = editDescription.trim() || undefined;
+    const normalizedLocation = editLocation.trim() || null;
 
     const unchanged =
       selectedEvent.name === trimmedName &&
       selectedEvent.start === normalizedStart &&
       selectedEvent.end === normalizedEnd &&
-      (selectedEvent.description ?? "") === (normalizedDescription ?? "");
+      (selectedEvent.description ?? "") === (normalizedDescription ?? "") &&
+      (selectedEvent.location ?? null) === normalizedLocation;
 
     if (unchanged) {
       setIsEditingEvent(false);
@@ -465,6 +473,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
             start: normalizedStart,
             end: normalizedEnd,
             description: normalizedDescription,
+            location: normalizedLocation,
           }
         : item
     );
@@ -482,6 +491,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
         start: normalizedStart,
         end: normalizedEnd,
         description: normalizedDescription,
+        location: normalizedLocation,
       });
       const refreshed = await dataService.fetchDayTimeline(targetDate);
       if (selectedDateKeyRef.current === targetDateKey) {
@@ -577,6 +587,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     start: normalizedStart,
     end: normalizedEnd,
     description: newDescription.trim() || undefined,
+    location: newLocation.trim() || null,
     priority: 0,
     flexible: false,
     travel_time_min: 0,
@@ -597,6 +608,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       start: tempItem.start,
       end: tempItem.end,
       description: tempItem.description,
+      location: tempItem.location,
       priority: tempItem.priority,
       flexible: tempItem.flexible,
       travel_time_min: tempItem.travel_time_min,
@@ -645,7 +657,9 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     editStartTime,
     editEndTime,
     editDescription,
+    editLocation,
     newDescription,
+    newLocation,
     newTime,
     newTitle,
     nowMinutes,
@@ -654,9 +668,11 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     savingEventIds,
     schedulingHints,
     setNewDescription,
+    setNewLocation,
     setNewTime,
     setNewTitle,
     setEditDescription,
+    setEditLocation,
     setEditEndTime,
     setEditStartTime,
     setEditTitle,

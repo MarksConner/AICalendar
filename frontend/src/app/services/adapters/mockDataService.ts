@@ -18,7 +18,14 @@ import {
   updateDayTimelineItem as mockUpdateDayTimelineItem,
 } from "../../api/Today";
 import { getDayAiSuggestions as mockGetDayAiSuggestions } from "../../api/AiSuggestions";
-import type { AppDataService } from "../contracts";
+import type {
+  AppDataService,
+  AddEventParticipantInput,
+  EventParticipant,
+  ParticipantsForEvent,
+  TravelTimeResponse,
+} from "../contracts";
+import { startMicrophoneInput, stopMicrophoneInput } from "../tts/mic_parsing";
 
 export const mockDataService: AppDataService = {
   login(email, password) {
@@ -62,5 +69,45 @@ export const mockDataService: AppDataService = {
   },
   getDayAiSuggestions(date, items) {
     return mockGetDayAiSuggestions(date, items);
+  },
+
+  // Participants — stubs only; participant features require the real backend
+  addEventParticipant(_eventId: string, input: AddEventParticipantInput): Promise<EventParticipant> {
+    return Promise.resolve({
+      participant_id: crypto.randomUUID(),
+      event_id: _eventId,
+      name: input.name,
+      info: input.info ?? null,
+      role: input.role ?? null,
+    });
+  },
+  removeEventParticipant(_participantId: string): Promise<void> {
+    return Promise.resolve();
+  },
+  getParticipantsForEvent(eventId: string): Promise<ParticipantsForEvent> {
+    return Promise.resolve({ event_id: eventId, participants: [] });
+  },
+  getParticipantInfo(_participantId: string): Promise<EventParticipant> {
+    return Promise.reject(new Error("Not available in mock mode"));
+  },
+  getEventsForParticipant(_participantName: string) {
+    return Promise.resolve([]);
+  },
+
+  // Microphone — delegates to the real mic parsing module (works in mock mode)
+  async startMicrophoneTranscription(): Promise<string | null> {
+    return startMicrophoneInput();
+  },
+  stopMicrophoneTranscription(): void {
+    stopMicrophoneInput();
+  },
+
+  // Travel time — returns a fixed mock result centered on Boston for local dev
+  getTravelTime(_eventId: string, _fromLat: number, _fromLng: number): Promise<TravelTimeResponse> {
+    return Promise.resolve({
+      travel_time_min: 14,
+      event_lat: 42.3467,
+      event_lng: -71.0972,
+    });
   },
 };

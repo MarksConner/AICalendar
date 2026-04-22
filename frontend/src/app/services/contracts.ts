@@ -107,6 +107,13 @@ export interface AiSuggestionsResponse {
   suggestions: AiSuggestion[];
 }
 
+/** Response from GET /events/event_id/{id}/travel_time */
+export interface TravelTimeResponse {
+  travel_time_min: number;
+  event_lat: number;
+  event_long: number;
+}
+
 
 // Event participants
   export interface AddEventParticipantInput {
@@ -172,4 +179,6 @@ export interface AppDataService {
   startMicrophoneTranscription(): Promise<string | null>;
   stopMicrophoneTranscription(): void;
 
+  // GET /events/event_id/{id}/travel-time?from_lat=&from_lng=
+  getTravelTime(eventId: string, fromLat: number, fromLng: number): Promise<TravelTimeResponse>;
 }

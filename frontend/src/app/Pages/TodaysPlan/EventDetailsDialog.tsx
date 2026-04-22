@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { DailyTimelineItem } from "../../Types/Calendar";
@@ -6,6 +7,7 @@ import { Badge } from "../../design_system/components/ui/Badge";
 import { Button } from "../../design_system/components/ui/Button";
 import { Modal } from "../../design_system/components/ui/Modal";
 import { Input } from "../../design_system/components/ui/Input";
+import { EventMap } from "../../components/EventMap";
 import { extractTimeHHMM } from "./dayPlannerUtils";
 
 type EventDetailsDialogProps = {
@@ -28,8 +30,15 @@ type EventDetailsDialogProps = {
   onSaveEdit: () => void;
   onSetEditDescription: (value: string) => void;
   onSetEditEndTime: (value: string) => void;
+  onSetEditLocation: (value: string) => void;
   onSetEditStartTime: (value: string) => void;
   onSetEditTitle: (value: string) => void;
+  editLocation: string;
+  // Location / travel time (populated by useEventLocation in TodaysPlanPage)
+  eventLat?: number | null;
+  eventLng?: number | null;
+  travelTimeMin?: number | null;
+  isTravelLoading?: boolean;
 };
 
 const formatPriorityLabel = (priority: number): string => {
@@ -63,8 +72,14 @@ export const EventDetailsDialog = ({
   onSaveEdit,
   onSetEditDescription,
   onSetEditEndTime,
+  onSetEditLocation,
   onSetEditStartTime,
   onSetEditTitle,
+  editLocation,
+  eventLat,
+  eventLng,
+  travelTimeMin,
+  isTravelLoading,
 }: EventDetailsDialogProps) => {
   return (
     <Modal
@@ -132,6 +147,14 @@ export const EventDetailsDialog = ({
                 }
               />
               <Input
+                label="Location (optional)"
+                placeholder="e.g., 123 Main St, Boston, MA"
+                value={editLocation}
+                onChange={(htmlEvent) =>
+                  onSetEditLocation(htmlEvent.target.value)
+                }
+              />
+              <Input
                 label="Description"
                 placeholder="Short note about this task"
                 value={editDescription}
@@ -153,12 +176,25 @@ export const EventDetailsDialog = ({
                   {extractTimeHHMM(event.start)} – {extractTimeHHMM(event.end)}
                 </Typography>
                 {event.location && (
-                  <Typography variant="body2" color="text.secondary">
-                    {event.location}
-                    {event.travel_time_min > 0
-                      ? ` · ${event.travel_time_min} min travel`
-                      : ""}
-                  </Typography>
+                  <Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {event.location}
+                      </Typography>
+                      {isTravelLoading ? (
+                        <CircularProgress size={10} sx={{ ml: 0.5 }} />
+                      ) : travelTimeMin != null ? (
+                        <Typography variant="body2" color="text.secondary">
+                          {` · ~${travelTimeMin} min travel`}
+                        </Typography>
+                      ) : null}
+                    </Box>
+                    {eventLat != null && eventLng != null && (
+                      <Box sx={{ mt: 1 }}>
+                        <EventMap latitude={eventLat} longitude={eventLng} />
+                      </Box>
+                    )}
+                  </Box>
                 )}
                 {event.flexible && (
                   <Typography variant="caption" color="text.secondary">

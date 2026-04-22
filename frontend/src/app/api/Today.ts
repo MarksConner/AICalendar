@@ -29,6 +29,7 @@ const MOCK_SEED_ITEMS: Omit<DailyTimelineItem, "id">[] = [
     start: "PLACEHOLDER_DATE T11:00:00",
     end: "PLACEHOLDER_DATE T12:00:00",
     description: "Review UI progress and next steps.",
+    location: "Boston City Hall, 1 City Hall Square, Boston, MA",
     priority: 1,
     flexible: false,
     travel_time_min: 0,

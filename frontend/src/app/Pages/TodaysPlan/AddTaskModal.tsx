@@ -14,10 +14,12 @@ type AddTaskModalProps = {
   isLoadingHints: boolean;
   isOpen: boolean;
   newDescription: string;
+  newLocation: string;
   newTime: string;
   newTitle: string;
   onClose: () => void;
   onDescriptionChange: (value: string) => void;
+  onLocationChange: (value: string) => void;
   onSave: () => void;
   onTimeChange: (value: string) => void;
   onTitleChange: (value: string) => void;
@@ -31,10 +33,12 @@ export function AddTaskModal({
   isLoadingHints,
   isOpen,
   newDescription,
+  newLocation,
   newTime,
   newTitle,
   onClose,
   onDescriptionChange,
+  onLocationChange,
   onSave,
   onTimeChange,
   onTitleChange,
@@ -68,6 +72,12 @@ export function AddTaskModal({
           placeholder="HH:MM (24h)"
           value={newTime}
           onChange={(event) => onTimeChange(event.target.value)}
+        />
+        <Input
+          label="Location (optional)"
+          placeholder="e.g., 123 Main St, Boston, MA"
+          value={newLocation}
+          onChange={(event) => onLocationChange(event.target.value)}
         />
         <Input
           label="Description (optional)"
