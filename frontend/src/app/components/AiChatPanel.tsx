@@ -215,11 +215,14 @@ export const AiChatPanel = () => {
       const aiData = await aiResponse.json();
       console.log("askAI data:", aiData);
 
-      const assistantText = String(
-        aiData.response ?? aiData.message ?? "No response returned."
-      );
-
-      addAssistantMessage(assistantText);
+    const assistantText = Array.isArray(aiData.results)
+      ? aiData.results
+          .map((item: any) => `• ${item.response ?? item.error ?? item.message}`)
+          .filter(Boolean)
+          .join("\n")
+      : String(aiData.response ?? aiData.message ?? aiData.error ?? "No response returned.");
+          
+        addAssistantMessage(assistantText);
 
       if (currentChatId) {
         const saveAssistantResponse = await chatClient.sendMessageAPI(

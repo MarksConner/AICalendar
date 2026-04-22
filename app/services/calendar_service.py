@@ -99,7 +99,7 @@ def get_calendar_context(session: Session, calendar_id: str) -> dict:
     return {
         "events": [
             {
-                "id": str(event.event_id),
+                "event_id": str(event.event_id),
                 "name": event.event_name,
                 "start": event.start_time.isoformat() if event.start_time else None,
                 "end": event.end_time.isoformat() if event.end_time else None,
