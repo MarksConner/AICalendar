@@ -123,6 +123,9 @@ export function AppShell() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(
+    () => localStorage.getItem("calendar_id") || null
+  );
 
   const selectedDate = useMemo(
     () => parseDateParam(searchParams.get("date")) ?? new Date(),
@@ -203,9 +206,26 @@ export function AppShell() {
   const handleNext = () =>
     setSelectedDate(shiftDateByView(selectedDate, selectedView, 1));
 
+  const handleSetSelectedCalendarId = useCallback((id: string | null) => {
+    setSelectedCalendarId(id);
+    if (id) {
+      localStorage.setItem("calendar_id", id);
+    } else {
+      localStorage.removeItem("calendar_id");
+    }
+  }, []);
+
   const calendarContextValue = useMemo(
-    () => ({ selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay }),
-    [selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay]
+    () => ({
+      selectedDate,
+      setSelectedDate,
+      selectedView,
+      setSelectedView,
+      navigateToDay,
+      selectedCalendarId,
+      setSelectedCalendarId: handleSetSelectedCalendarId,
+    }),
+    [selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay, selectedCalendarId, handleSetSelectedCalendarId]
   );
 
   return (

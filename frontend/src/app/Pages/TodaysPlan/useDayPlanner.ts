@@ -4,6 +4,7 @@ import type { DailyTimelineItem } from "../../Types/Calendar";
 import { dataService } from "../../services";
 import type { DaySchedulingHints } from "../../services";
 import type { CalendarView } from "../../contexts/calendarState";
+import { useCalendar } from "../../contexts/useCalendar";
 import {
   buildPositionedEvents,
   DEFAULT_DURATION_MINUTES,
@@ -33,6 +34,7 @@ const sortItemsByStart = (items: DailyTimelineItem[]) =>
   [...items].sort((a, b) => a.start.localeCompare(b.start));
 
 export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs) {
+  const { selectedCalendarId } = useCalendar();
   const [items, setItems] = useState<DailyTimelineItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,10 +88,17 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   }, [selectedDate]);
 
   useEffect(() => {
+    if (!selectedCalendarId) {
+      setItems([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     dataService
-      .fetchDayTimeline(selectedDate)
+      .fetchDayTimeline(selectedDate, selectedCalendarId)
       .then((data) => {
         setItems(data);
         setIsLoading(false);
@@ -99,7 +108,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
         setError("Could not load events for this day.");
         setIsLoading(false);
       });
-  }, [selectedDate]);
+  }, [selectedCalendarId, selectedDate]);
 
   useEffect(() => {
     setInteractionState(null);
@@ -125,13 +134,20 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
 
     let cancelled = false;
     const timeoutId = window.setTimeout(() => {
+      if (!selectedCalendarId) {
+        setHintError("Select a calendar first.");
+        setSchedulingHints(null);
+        setIsLoadingHints(false);
+        return;
+      }
+
       setIsLoadingHints(true);
       setHintError(null);
       dataService
         .getDaySchedulingHints(selectedDate, {
           startTime: minutesToTimeString(parsedStart),
           durationMinutes: DEFAULT_DURATION_MINUTES,
-        })
+        }, selectedCalendarId)
         .then((hints) => {
           if (cancelled) return;
           setSchedulingHints(hints);
@@ -149,7 +165,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [isAddOpen, newTime, selectedDate]);
+  }, [isAddOpen, newTime, selectedCalendarId, selectedDate]);
 
   // Apply in-progress drag/resize drafts (stored as HH:MM) to the item list for
   // visual feedback, converting back to ISO datetimes before passing to the grid.
@@ -239,7 +255,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
           start: draftStartISO,
           end: draftEndISO,
         });
-        const refreshed = await dataService.fetchDayTimeline(targetDate);
+        const refreshed = await dataService.fetchDayTimeline(targetDate, selectedCalendarId);
         if (selectedDateKeyRef.current === targetDateKey) {
           setItems(sortItemsByStart(refreshed));
         }
@@ -252,7 +268,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
         setSavingEventIds((prev) => prev.filter((id) => id !== eventId));
       }
     },
-    [items, selectedDate]
+    [items, selectedCalendarId, selectedDate]
   );
 
   const startEventInteraction = useCallback(
@@ -493,7 +509,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
         description: normalizedDescription,
         location: normalizedLocation,
       });
-      const refreshed = await dataService.fetchDayTimeline(targetDate);
+      const refreshed = await dataService.fetchDayTimeline(targetDate, selectedCalendarId);
       if (selectedDateKeyRef.current === targetDateKey) {
         setItems(sortItemsByStart(refreshed));
       }
@@ -530,7 +546,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
 
     try {
       await dataService.deleteDayEvent(targetDate, selectedEvent.id);
-      const refreshed = await dataService.fetchDayTimeline(targetDate);
+      const refreshed = await dataService.fetchDayTimeline(targetDate, selectedCalendarId);
       if (selectedDateKeyRef.current === targetDateKey) {
         setItems(sortItemsByStart(refreshed));
       }
@@ -552,6 +568,11 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
 
   const handleAddTask = async () => {
   console.log("HANDLE ADD TASK FIRED", { newTitle, newTime });
+
+  if (!selectedCalendarId) {
+    setAddTaskError("Select a calendar first.");
+    return;
+  }
 
   const startMinutes = parseTimeToMinutes(newTime);
 
@@ -612,9 +633,9 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       priority: tempItem.priority,
       flexible: tempItem.flexible,
       travel_time_min: tempItem.travel_time_min,
-    });
+    }, selectedCalendarId);
 
-    const refreshed = await dataService.fetchDayTimeline(targetDate);
+    const refreshed = await dataService.fetchDayTimeline(targetDate, selectedCalendarId);
 
     if (selectedDateKeyRef.current === targetDateKey) {
       setItems(sortItemsByStart(refreshed));

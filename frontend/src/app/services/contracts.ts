@@ -148,16 +148,17 @@ export interface AppDataService {
   // POST /users — creates a new account.
   createUser(payload: CreateUserPayload): Promise<CreateUserResult>;
   // GET /calendar/events — monthIndex is 0-based (JS Date convention: 0 = Jan, 11 = Dec).
-  fetchMonthEvents(year: number, monthIndex: number): Promise<CalendarEvent[]>;
+  fetchMonthEvents(year: number, monthIndex: number, calendarId?: string | null): Promise<CalendarEvent[]>;
   // GET /calendar/day-timeline?date=YYYY-MM-DD — all events for a given day.
-  fetchDayTimeline(date: Date): Promise<DailyTimelineItem[]>;
+  fetchDayTimeline(date: Date, calendarId?: string | null): Promise<DailyTimelineItem[]>;
   // GET /calendar/day-hints — checks for scheduling conflicts around a proposed time.
   getDaySchedulingHints(
     date: Date,
-    request: DaySchedulingHintsRequest
+    request: DaySchedulingHintsRequest,
+    calendarId?: string | null
   ): Promise<DaySchedulingHints>;
   // POST /calendar/day-events — creates a new event.
-  createDayEvent(date: Date, input: CreateDayEventInput): Promise<DailyTimelineItem>;
+  createDayEvent(date: Date, input: CreateDayEventInput, calendarId?: string | null): Promise<DailyTimelineItem>;
   // PATCH /calendar/day-events/{id} — partial update on an existing event.
   updateDayEvent(date: Date,eventId: string,updates: UpdateDayEventInput): Promise<DailyTimelineItem>
 

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 from  datetime import datetime
@@ -132,3 +132,54 @@ class TravelTimeResponse(BaseModel):
     travel_time_min: int
     event_lat: float
     event_long: float
+
+
+class LocalEventsRequest(BaseModel):
+    latitude: float
+    longitude: float
+    radius_km: float = 25
+    keyword: str | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+
+
+class LocalEventSuggestion(BaseModel):
+    source: str
+    external_id: str
+    title: str
+    description: str | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    venue_name: str | None = None
+    address: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    url: str | None = None
+    image_url: str | None = None
+    is_free: bool | None = None
+    raw: dict[str, Any] | None = None
+
+
+class AddSuggestedEventRequest(BaseModel):
+    calendar_id: UUID
+    title: str
+    description: str | None = None
+    address: str | None = None
+    start_time: datetime
+    end_time: datetime | None = None
+    priority_rank: int = 3
+
+
+class RouteRequest(BaseModel):
+    user_latitude: float
+    user_longitude: float
+    destination: str
+
+
+class RouteResponse(BaseModel):
+    destination_name: str
+    destination_latitude: float
+    destination_longitude: float
+    distance_meters: float
+    duration_seconds: float
+    geometry: dict[str, Any] | None = None

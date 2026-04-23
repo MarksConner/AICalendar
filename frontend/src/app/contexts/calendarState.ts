@@ -9,7 +9,7 @@ export type CalendarContextValue = {
   setSelectedView: (view: CalendarView) => void;
   navigateToDay: (date: Date) => void;
   selectedCalendarId: string | null;
-  setSelectedCalendarId: (id: string) => void;
+  setSelectedCalendarId: (id: string | null) => void;
 };
 
 export const CalendarContext = createContext<CalendarContextValue | null>(null);

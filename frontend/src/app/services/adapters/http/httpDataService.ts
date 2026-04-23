@@ -185,8 +185,8 @@ export const httpDataService: AppDataService = {
     }).then(normalizeUserCreateResponse);
   },
 
-  async fetchMonthEvents(year, monthIndex) {
-    const calendarId = await getPrimaryCalendarId();
+  async fetchMonthEvents(year, monthIndex, calendarIdOverride) {
+    const calendarId = calendarIdOverride ?? await getPrimaryCalendarId();
     const events = await requestJson<RawDayEvent[]>(
       `/events/calendar/${calendarId}/events`,
       {
@@ -197,8 +197,8 @@ export const httpDataService: AppDataService = {
     return events.map(normalizeTimelineItem);
   },
 
-  async fetchDayTimeline(date) {
-    const calendarId = await getPrimaryCalendarId();
+  async fetchDayTimeline(date, calendarIdOverride) {
+    const calendarId = calendarIdOverride ?? await getPrimaryCalendarId();
     const events = await requestJson<RawDayEvent[]>(
       `/events/calendar/${calendarId}/day/${toDateKey(date)}`
     );
@@ -206,8 +206,8 @@ export const httpDataService: AppDataService = {
   },
 
 // Day hints  needs date, and calendar_id to determine working hours and conflicts, but we don't want to force the caller to know about calendar IDs, so we just fetch the primary calendar ID internally here.
-  async getDaySchedulingHints(date, request: DaySchedulingHintsRequest) {
-    const calendarId = await getPrimaryCalendarId();
+  async getDaySchedulingHints(date, request: DaySchedulingHintsRequest, calendarIdOverride) {
+    const calendarId = calendarIdOverride ?? await getPrimaryCalendarId();
     return requestJson<DaySchedulingHints>("/calendar/day-hints", {
       query: {
         date: toDateKey(date),
@@ -219,8 +219,8 @@ export const httpDataService: AppDataService = {
     });
   },
 
-  async createDayEvent(_date, input: CreateDayEventInput) {
-    const calendarId = await getPrimaryCalendarId();
+  async createDayEvent(_date, input: CreateDayEventInput, calendarIdOverride) {
+    const calendarId = calendarIdOverride ?? await getPrimaryCalendarId();
 
     return requestJson<RawDayEvent>("/events/create", {
       method: "POST",

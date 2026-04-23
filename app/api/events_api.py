@@ -1,11 +1,14 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from app.api.base_model_classes import EventCreate, EventUpdate, AddEventParticipant, ParticipantInfo, ParticipantsForEvent, RemoveEventParticipant, EventParticipantInfo, TravelTimeResponse
 from sqlalchemy.orm import Session
+
+from app.api.base_model_classes import AddEventParticipant, AddSuggestedEventRequest, EventCreate, EventParticipantInfo, EventUpdate, LocalEventSuggestion, LocalEventsRequest, ParticipantInfo, ParticipantsForEvent, RemoveEventParticipant, RouteRequest, RouteResponse, TravelTimeResponse
 from app.db import SessionLocal
 from app.services.events_service import (create_event, get_events_for_calendar_day, get_events_for_calendar_month,update_event,detect_event_conflicts, 
  get_event_by_id, remove_event, add_event_participant, remove_event_participant,get_participants_for_event, get_participant_details,update_participant_location,update_participant_info,detect_participant_event_conflicts)
 from datetime import datetime, timezone
+from app.services.google_places_service import search_local_events
+from app.services.mapbox_service import get_route
 from backend.mapbox import geocode, get_travel_time_minutes
 
 
@@ -77,6 +80,42 @@ def get_event_by_id_router(event_id: UUID ,db: Session = Depends(get_db) ):
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
+
+@router.post("/travel-time", response_model=RouteResponse)
+def get_route_for_destination(request: RouteRequest):
+    return get_route(
+        user_longitude=request.user_longitude,
+        user_latitude=request.user_latitude,
+        destination=request.destination,
+    )
+
+
+@router.post("/local-suggestions", response_model=list[LocalEventSuggestion])
+def get_local_event_suggestions(request: LocalEventsRequest):
+    return search_local_events(
+        latitude=request.latitude,
+        longitude=request.longitude,
+        radius_km=request.radius_km,
+        keyword=request.keyword,
+        start_date=request.start_date,
+        end_date=request.end_date,
+    )
+
+
+@router.post("/add-suggested")
+def add_suggested_event(request: AddSuggestedEventRequest, db: Session = Depends(get_db)):
+    end_time = request.end_time or request.start_time
+    created_event = create_event(
+        db,
+        request.calendar_id,
+        request.title,
+        request.address or "",
+        request.start_time,
+        end_time,
+        request.description or "",
+        request.priority_rank,
+    )
+    return {"message": "Suggested event added successfully", "event_id": created_event.event_id}
 
 
 ## Participants helpers and routes

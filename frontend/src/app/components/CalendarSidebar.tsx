@@ -57,12 +57,9 @@ const SidebarLink = ({ to, label }: { to: string; label: string }) => {
 };
 
 export const CalendarSidebar = () => {
-  const { selectedDate, setSelectedDate } = useCalendar();
+  const { selectedDate, setSelectedDate, selectedCalendarId, setSelectedCalendarId } = useCalendar();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
-  const [selectedCalendarId, setSelectedCalendarId] = useState(
-    localStorage.getItem("calendar_id") || ""
-  );
 
   useEffect(() => {
     const fetchCalendars = async () => {
@@ -85,7 +82,6 @@ export const CalendarSidebar = () => {
           );
 
           const defaultId = validStoredId ? storedId! : data[0].calendar_id;
-          localStorage.setItem("calendar_id", defaultId);
           setSelectedCalendarId(defaultId);
         }
       } catch (err) {
@@ -98,7 +94,6 @@ export const CalendarSidebar = () => {
 
   const handleToggleCalendar = (id: string) => {
     setSelectedCalendarId(id);
-    localStorage.setItem("calendar_id", id);
     console.log("Selected calendar_id stored:", id);
   };
 
@@ -140,7 +135,6 @@ export const CalendarSidebar = () => {
       if (refreshedData.length > 0) {
         const newestCalendar = refreshedData[refreshedData.length - 1];
         setSelectedCalendarId(newestCalendar.calendar_id);
-        localStorage.setItem("calendar_id", newestCalendar.calendar_id);
       }
     }
   };

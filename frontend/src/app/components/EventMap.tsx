@@ -18,8 +18,12 @@ interface EventMapProps {
 export const EventMap = ({ latitude, longitude }: EventMapProps) => (
   <Box sx={{ height: 200, borderRadius: 1, overflow: "hidden" }}>
     <Map
+      key={`${latitude}-${longitude}`}
       mapboxAccessToken={MAPBOX_TOKEN}
       initialViewState={{ latitude, longitude, zoom: 14 }}
+      longitude={longitude}
+      latitude={latitude}
+      zoom={14}
       style={{ width: "100%", height: "100%" }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       scrollZoom={false}
