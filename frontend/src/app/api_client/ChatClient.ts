@@ -61,7 +61,7 @@ export default class ChatClient {
     return this.request({
       method: "POST",
       url: "/chat",
-      body: { message, calendar_id, chat_id, buildUserTimezoneAndTimeObject()},
+      body: { message, calendar_id, chat_id, current_time: buildUserTimezoneAndTimeObject(),},
     });
   }
 }
