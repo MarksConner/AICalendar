@@ -1,3 +1,4 @@
+import { buildUserTimezoneAndTimeObject } from "../Pages/TodaysPlan/dayPlannerUtils";
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
 type RequestOptions = {
@@ -60,7 +61,7 @@ export default class ChatClient {
     return this.request({
       method: "POST",
       url: "/chat",
-      body: { message, calendar_id, chat_id},
+      body: { message, calendar_id, chat_id, buildUserTimezoneAndTimeObject()},
     });
   }
 }

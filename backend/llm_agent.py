@@ -18,10 +18,18 @@ except Exception:
 
 
 
-def ask_llm(message: str, * ,calendar_context: Optional[Dict[str, Any]] = None, chat_context: Optional[Dict[str, Any]] = None) -> str:
-        
-    now = datetime.now()
-    current_time_text = now.strftime("%Y-%m-%d %H:%M:%S")
+def ask_llm(message: str, * ,calendar_context: Optional[Dict[str, Any]] = None, chat_context: Optional[Dict[str, Any]] = None, current_time: Optional[Dict[str, Any]] = None,) -> str:
+    
+    # Check current time was properly fetch, and wrap into a text.
+    if current_time:
+        current_time_text = (
+            f"User local datetime: {current_time.get('user_current_datetime')}. "
+            f"User timezone: {current_time.get('user_timezone')}. "
+            f"User current minutes after midnight: {current_time.get('user_current_minutes')}."
+        )
+    else:
+        current_time_text = "User local time was not provided."
+
     """
     Sends the user message, optional calendar context, and optional chat context to the LLM.
     Returns a JSON string that the API layer will parse.
@@ -45,6 +53,7 @@ def ask_llm(message: str, * ,calendar_context: Optional[Dict[str, Any]] = None, 
 You are an intelligent calendar scheduling assistant.
 Current time: """ + current_time_text + """
 
+
 You MUST respond with valid JSON only.
 Always return this top-level format:
 
@@ -59,6 +68,7 @@ Always return this top-level format:
 Even if there is only one action, still return it inside the "actions" array.
 
 General rules:
+- When user uses time referential words such as "today, tomorrow, in 3 days" use the user current time to derive the correct time.
 - Preserve execution order.
 - Do not drop actions.
 - Do not merge unrelated actions into one intent.
