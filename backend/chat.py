@@ -6,8 +6,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from datetime import datetime
 from sqlalchemy.orm import Session
-from typing import Any
-
+from typing import Any, Optional, Dict
 from backend.llm_agent import ask_llm, llm_summarize_chat_history
 from backend.schedule import Schedule
 from backend.errors import ConflictError
@@ -36,6 +35,7 @@ class UserMessage(BaseModel):
     calendar_id: str | None = None
     location: str | None = None
     chat_id: str | None = None
+    current_time: Optional[Dict[str, Any]] = None
 
 @router.post("")
 def chat(data: UserMessage):
@@ -46,7 +46,7 @@ def chat(data: UserMessage):
         chat_context = get_chat_context(read_db, data.chat_id) if data.chat_id else None
 
     # no DB session held during LLM call
-    llm_output = ask_llm(data.message,calendar_context=calendar_context,chat_context=chat_context)
+    llm_output = ask_llm(data.message,calendar_context=calendar_context,chat_context=chat_context, current_time = data.current_time)
 
     if not llm_output:
         return {"error": "LLM returned an empty response"}
