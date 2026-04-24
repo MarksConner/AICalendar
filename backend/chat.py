@@ -39,6 +39,7 @@ class UserMessage(BaseModel):
 
 @router.post("")
 def chat(data: UserMessage):
+
     # short-lived read session
     with SessionLocal() as read_db:
         calendar_context = get_calendar_context(read_db, data.calendar_id) if data.calendar_id else None
@@ -281,7 +282,7 @@ def chat(data: UserMessage):
                         db = session,
                         event_id = uuid.UUID(event_id),
                         name = participant_name,
-                        action = action.get("participant_action"),
+                        info  = action.get("participant_action"),
                         full_address = action.get("participant_location"),
                     )
                     return {
