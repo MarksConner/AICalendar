@@ -11,6 +11,7 @@ import {
 } from "../services/tts/mic_parsing";
 import ChatClient from "../api_client/ChatClient";
 import { ThinkingSymbol } from "../design_system/components/ui/ThinkingSymbol";
+import { useCalendar } from "../contexts/CalendarContext";
 
 // Chat message construct
 type ChatMessage = {
@@ -39,6 +40,7 @@ export const AiChatPanel = () => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicDraft, setHasMicDraft] = useState(false);
+  const {selectedCalendarId} = useCalendar();
 
   const chatClient = useMemo(() => new ChatClient(), []);
 
@@ -154,7 +156,7 @@ export const AiChatPanel = () => {
     setIsLoading(true);
 
     try {
-      const calendarId = localStorage.getItem("calendar_id");
+      const calendarId = selectedCalendarId;
       if (!calendarId) {
         addAssistantMessage("No calendar selected.");
         return;

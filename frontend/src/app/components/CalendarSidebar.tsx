@@ -94,6 +94,9 @@ export const CalendarSidebar = () => {
 
   const handleToggleCalendar = (id: string) => {
     setSelectedCalendarId(id);
+    localStorage.setItem("calendar_id",id)
+    localStorage.removeItem("chat_id");
+    localStorage.removeItem("chat_messages");
     console.log("Selected calendar_id stored:", id);
   };
 
