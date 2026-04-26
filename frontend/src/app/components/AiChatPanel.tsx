@@ -40,7 +40,7 @@ export const AiChatPanel = () => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicDraft, setHasMicDraft] = useState(false);
-  const {selectedCalendarId} = useCalendar();
+  const {selectedCalendarId, refreshEvents} = useCalendar();
 
   const chatClient = useMemo(() => new ChatClient(), []);
 
@@ -216,6 +216,7 @@ export const AiChatPanel = () => {
 
       const aiData = await aiResponse.json();
       console.log("askAI data:", aiData);
+      refreshEvents();
 
     const assistantText = Array.isArray(aiData.results)
       ? aiData.results

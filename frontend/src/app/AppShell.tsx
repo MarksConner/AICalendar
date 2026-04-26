@@ -126,6 +126,10 @@ export function AppShell() {
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(
     () => localStorage.getItem("calendar_id") || null
   );
+  const [eventsRefreshKey, setEventsRefreshKey] = useState(0);
+  const refreshEvents = useCallback(() => {
+    setEventsRefreshKey((prev) => prev + 1);
+  }, []);
 
   const selectedDate = useMemo(
     () => parseDateParam(searchParams.get("date")) ?? new Date(),
@@ -224,8 +228,11 @@ export function AppShell() {
       navigateToDay,
       selectedCalendarId,
       setSelectedCalendarId: handleSetSelectedCalendarId,
+      eventsRefreshKey,
+      refreshEvents,
+      
     }),
-    [selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay, selectedCalendarId, handleSetSelectedCalendarId]
+    [selectedDate, setSelectedDate, selectedView, setSelectedView, navigateToDay, selectedCalendarId, handleSetSelectedCalendarId, eventsRefreshKey, refreshEvents]
   );
 
   return (

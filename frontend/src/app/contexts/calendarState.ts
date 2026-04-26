@@ -10,6 +10,8 @@ export type CalendarContextValue = {
   navigateToDay: (date: Date) => void;
   selectedCalendarId: string | null;
   setSelectedCalendarId: (id: string | null) => void;
+  eventsRefreshKey: number;
+  refreshEvents: () => void;
 };
 
 export const CalendarContext = createContext<CalendarContextValue | null>(null);

@@ -58,7 +58,7 @@ const SidebarLink = ({ to, label }: { to: string; label: string }) => {
 };
 
 export const CalendarSidebar = () => {
-  const { selectedDate, setSelectedDate, selectedCalendarId, setSelectedCalendarId } = useCalendar();
+  const { selectedDate, setSelectedDate, selectedCalendarId, setSelectedCalendarId, refreshEvents} = useCalendar();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
 
@@ -109,6 +109,7 @@ export const CalendarSidebar = () => {
     if (!response.ok) {
       throw new Error(body?.detail || body?.message || "Failed to create event");
     }
+    refreshEvents();
   };
 
   const handleCreateCalendar = async (calendarData: CreateCalendarFormData) => {

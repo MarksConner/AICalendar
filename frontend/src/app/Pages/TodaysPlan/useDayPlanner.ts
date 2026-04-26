@@ -34,7 +34,7 @@ const sortItemsByStart = (items: DailyTimelineItem[]) =>
   [...items].sort((a, b) => a.start.localeCompare(b.start));
 
 export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs) {
-  const { selectedCalendarId } = useCalendar();
+  const { selectedCalendarId, eventsRefreshKey} = useCalendar();
   const [items, setItems] = useState<DailyTimelineItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
         setError("Could not load events for this day.");
         setIsLoading(false);
       });
-  }, [selectedCalendarId, selectedDate]);
+  }, [selectedCalendarId, selectedDate, eventsRefreshKey]);
 
   useEffect(() => {
     setInteractionState(null);
