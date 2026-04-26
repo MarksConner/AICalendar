@@ -210,6 +210,13 @@ export function AppShell() {
   const handleNext = () =>
     setSelectedDate(shiftDateByView(selectedDate, selectedView, 1));
 
+  const handleLogout = () => {localStorage.removeItem("access_token");localStorage.removeItem("user_id");localStorage.removeItem("calendar_id");localStorage.removeItem("chat_id");
+  localStorage.removeItem("chat_messages");
+  setSelectedCalendarId(null);
+  navigate("/", { replace: true });
+};
+
+
   const handleSetSelectedCalendarId = useCallback((id: string | null) => {
     setSelectedCalendarId(id);
     if (id) {
@@ -361,7 +368,7 @@ export function AppShell() {
                   Local events
                 </Button>
               </ButtonGroup>
-              <Button size="sm" variant="secondary" onClick={() => navigate("/login")}>
+              <Button size="sm" variant="secondary" onClick={handleLogout}>
                 Log out
               </Button>
             </Box>

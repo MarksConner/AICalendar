@@ -5,11 +5,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: "0.0.0.0",
-    allowedHosts: ["p4demo-production.up.railway.app"],
+    allowedHosts: ["p4demo-production.up.railway.app", "frontend-production-134c.up.railway.app"],
   },
   preview: {
     host: "0.0.0.0",
-    port: 8080,
-    allowedHosts: ["p4demo-production.up.railway.app"],
+    port:  Number(process.env.PORT) || 8080,
+    allowedHosts: ["p4demo-production.up.railway.app", "frontend-production-134c.up.railway.app"],
   },
 });
