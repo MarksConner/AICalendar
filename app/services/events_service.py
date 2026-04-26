@@ -18,7 +18,17 @@ def create_event(db: Session, calendar_id: UUID, event_name: str, full_address: 
         coords = geocode(full_address)
         if coords:
             geo_lat, geo_long = coords
-            
+
+    conflicts = detect_event_conflicts(
+        db=db,
+        calendar_id=calendar_id,
+        start_time=start_time,
+        end_time=end_time,
+    )
+    if conflicts:
+        names = ", ".join([event.event_name for event in conflicts])
+        raise ValueError(f"Time conflict with existing event(s): {names}")
+    
     new_event =  Events(calendar_id=calendar_id,
         event_name=event_name,
         start_time=start_time,

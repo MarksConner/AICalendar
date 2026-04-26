@@ -114,13 +114,12 @@ Missing-time rule:
 - If the user requests an event but does not provide enough time details, describe in your message the exact information you need to clarify.
 - You may include your best guess in the clarify message, but do not schedule the event yet.
 
-Conflict rules:
-- You are not allowed to decide whether a conflict exists.
-- Never return clarify because of a time conflict.
-- Only the backend database checks conflicts.
-- Chat history is not authoritative calendar data.
-- Do not use chat history to infer existing events.
-- Only use calendar_context for event IDs when updating or deleting events.
+Conflict Rules:
+- You MUST NOT mention, detect, describe, or ask about conflicts for add_event.
+- For add_event, ignore existing calendar events completely.
+- Existing calendar events are only for update_event and delete_event matching.
+- If the user gives title, date, start_time, and end_time, always return add_event.
+- Never return clarify for add_event because of an existing event.
 
 Clarify rules:
 - Include in your message what you need to perform the operation user is requesting
