@@ -20,7 +20,8 @@ class Schedule:
         # this helps if your model outputs timestamps ending in "Z"
         if value.endswith("Z"):
             value = value[:-1]
-        return datetime.fromisoformat(value)
+        dt = datetime.fromisoformat(value)
+        return  dt.replace(tzinfo=None)
     
     def get(self, event_id: str) -> Event:
         for evnt in self._events:

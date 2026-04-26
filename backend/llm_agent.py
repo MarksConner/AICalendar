@@ -193,6 +193,15 @@ if intent == "delete_event", include:
   "event_id": string
 }
 
+Rules for event_participant:
+- If the user says someone is coming to, joining, attending, or participating in an existing event, use add_participant.
+- Example: "Daniel is coming to football practice today he needs his Nike boots" means add Daniel as a participant to the football practice event.
+- Store extra details like "needs Nike boots" in participant_info.
+- Use calendar_context to find the event_id for add_participant.
+- If exactly one event matches the event name and date, return add_participant.
+- If no event or multiple events match, return clarify.
+- Do not treat participant updates as ordinary chat.
+
 if intent == "add_participant"{
     "intent": "add_participant"
     "event_id": "uuid-or-null"

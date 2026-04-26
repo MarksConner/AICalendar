@@ -96,6 +96,7 @@ def chat(data: UserMessage):
                     travel = get_directions(data.location, location)
                     travel_minutes = int(travel["routes"][0]["duration"] / 60)
 
+              
                 try:
                     # recurring first
                     if recurring:
@@ -133,6 +134,10 @@ def chat(data: UserMessage):
                     # non-recurring after that
                     start = action.get("start_time")
                     end = action.get("end_time")
+                    
+                    print(start)
+                    print(end)
+
 
                     if start and end:
                         start_dt = Schedule.parse_datetime(start)
@@ -249,7 +254,7 @@ def chat(data: UserMessage):
 
                     if delete_result:
                         results.append({
-                            "response": f"Event '{event_id}' deleted successfully!",
+                            "response": f"Event '{event_name}' deleted successfully!",
                             "action": "delete_event",
                             "event_id": event_id,
                         })
@@ -282,7 +287,7 @@ def chat(data: UserMessage):
                         db = session,
                         event_id = uuid.UUID(event_id),
                         name = participant_name,
-                        info  = action.get("participant_action"),
+                        info  = action.get("participant_info"),
                         full_address = action.get("participant_location"),
                     )
                     return {
@@ -291,7 +296,7 @@ def chat(data: UserMessage):
                         "participant": {
                             "participant_id": str(participant.participant_id),
                             "name": participant.name,
-                            "action": participant.action,
+                            "action": participant.info,
                             "full_address": participant.full_address,
                         },
                     }
@@ -322,16 +327,31 @@ def chat(data: UserMessage):
 
                 try:
                     participants = get_participants_for_event(db = session, event_id = uuid.UUID(event_id))
+                    participant_lines = []
+                    if not participants:
+                        return {
+                            "response": "No participants are listed for this event.",
+                            "action": "list_participants",
+                            "event_id": event_id,
+                            "participants": [],
+                        }
+                    for p in participants:
+                        if p.info:
+                            participant_lines.append(f"- {p.name}: {p.info}")
+                        else:
+                            participant_lines.append(f"- {p.name}")
+
+                    response_text = "Participants for this event:\n" + "\n".join(participant_lines)
+                        
                     return {
-                        "response": "Here are the participants.",
+                        "response": response_text,
                         "action": "list_participants",
                         "participants": [
                             {
                                 "participant_id": str(p.participant_id),
                                 "name": p.name,
-                                "action": p.action,
+                                "info": p.info,
                                 "full_address": p.full_address,
-                                "event_id": str(p.event_id),
                             }
                             for p in participants
                         ],
@@ -339,7 +359,7 @@ def chat(data: UserMessage):
                 except Exception as e:
                     return {"error": f"Error listing participants: {str(e)}"}
 
-            elif intent == "get_participant_action":
+            elif intent == "get_participant_info":
                 participant_id = action.get("participant_id")
                 if not participant_id:
                     return {"error": "Missing participant_id."}
@@ -351,11 +371,11 @@ def chat(data: UserMessage):
 
                     return {
                         "response": f"Found participant {participant.name}.",
-                        "action": "get_participant_action",
+                        "action": "get_participant_info",
                         "participant": {
                             "participant_id": str(participant.participant_id),
                             "name": participant.name,
-                            "action": participant.action,
+                            "info": participant.info,
                             "full_address": participant.full_address,
                             "event_id": str(participant.event_id),
                         },
