@@ -3,7 +3,7 @@ import type { CreateEventFormData } from "../components/CreateEventDialog";
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
 type RequestOptions = {
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "PUT" | "DELETE";
   url: string;
   headers?: Record<string, string>;
   body?: unknown;
@@ -120,5 +120,8 @@ export default class CalendarClient {
             method: "GET",
             url: `/calendar/export/${calendar_id}`,
         });
+    }
+    async deleteCalendarAPI(calendar_id: string): Promise<Response> {
+        return this.request({method: "DELETE",url: `/calendar/delete-calendar/${calendar_id}`,});
     }
 }

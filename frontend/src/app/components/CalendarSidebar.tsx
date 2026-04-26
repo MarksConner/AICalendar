@@ -5,7 +5,7 @@ import Divider from "@mui/material/Divider";
 import ListItemButton from "@mui/material/ListItemButton";
 import Typography from "@mui/material/Typography";
 import { useMatch, useResolvedPath, NavLink } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { MiniMonth } from "./MiniMonth";
 import { useCalendar } from "../contexts/CalendarContext";
 import {
@@ -14,6 +14,7 @@ import {
   type CreateEventFormData,
 } from "../components/CreateEventDialog";
 import { Button } from "../design_system/components/ui/Button";
+import IconButton from "@mui/material/IconButton";
 import CalendarClient from "../api_client/CalendarClient";
 
 type BackendCalendar = {
@@ -239,8 +240,68 @@ export const CalendarSidebar = () => {
                       }
                     }}>
                     Export
-                  </Button>
-              </ListItemButton>
+                    </Button>
+                    <IconButton
+                      size="small"
+                      edge="end"
+                      aria-label="delete calendar"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+
+                        const confirmed = window.confirm(
+                          `Delete calendar "${calendar.calendar_name}"?`
+                        );
+
+                        if (!confirmed) return;
+
+                        try {
+                          const calendarClient = new CalendarClient();
+
+                          const response = await calendarClient.deleteCalendarAPI(calendar.calendar_id);
+
+                          const body = await response.json().catch(() => null);
+
+                          if (!response.ok) {
+                            throw new Error(
+                              body?.detail || body?.message || "Failed to delete calendar"
+                            );
+                          }
+
+                          const updatedCalendars = calendars.filter(
+                            (c) => c.calendar_id !== calendar.calendar_id
+                          );
+
+                          setCalendars(updatedCalendars);
+
+                          if (selectedCalendarId === calendar.calendar_id) {
+                            const nextCalendar = updatedCalendars[0];
+
+                            if (nextCalendar) {
+                              setSelectedCalendarId(nextCalendar.calendar_id);
+                              localStorage.setItem("calendar_id", nextCalendar.calendar_id);
+                            } else {
+                              setSelectedCalendarId("");
+                              localStorage.removeItem("calendar_id");
+                            }
+
+                            localStorage.removeItem("chat_id");
+                            localStorage.removeItem("chat_messages");
+                          }
+                        } catch (err) {
+                          console.error("Failed to delete calendar", err);
+                        }
+                      }}
+                      sx={{
+                        ml: 0.5,
+                        color: "text.secondary",
+                        "&:hover": {
+                          color: "error.main",
+                        },
+                      }}
+                    >
+                    <Trash2 size={16} />
+                    </IconButton>
+                    </ListItemButton>
             );
           })}
         </Box>

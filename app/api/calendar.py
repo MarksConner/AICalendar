@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.base_model_classes import CalendarCreate
 from app.config import get_current_user
 from app.db import SessionLocal
-from app.services.calendar_service import create_calendar, get_calendars_by_user_id, day_scheduling_hints
+from app.services.calendar_service import create_calendar, get_calendars_by_user_id, delete_calendar_by_id
 from app.services.events_service import create_event
 from app.services.ics_parser import parse_ics
 
@@ -92,6 +92,14 @@ def create_calendar_route(calendar: CalendarCreate ,db: Session = Depends(get_db
 def get_calendars_by_user_id_route( db: Session = Depends(get_db),  current_user = Depends(get_current_user)):
     calendars = get_calendars_by_user_id(db, current_user.user_id)
     return calendars
+
+@router.delete("/delete-calendar/{calendar_id}")
+def delete_calendar_route(calendar_id: UUID,db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    deleted = delete_calendar_by_id(db, calendar_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Calendar not found")
+
+    return {"message": "Calendar deleted successfully"}
 
 
 @router.get("/day-hints")

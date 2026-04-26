@@ -273,6 +273,12 @@ export const httpDataService: AppDataService = {
     });
   },
 
+  deleteCalendar(calendar_id: string) {
+  return requestJson<void>(`/calendar/delete-calendar/${calendar_id}`, {
+    method: "DELETE",
+  });
+},
+
   getParticipantsForEvent(eventId: string) {
     return requestJson<ParticipantsForEvent>(`/events/participants_for_event/${eventId}`);
   },

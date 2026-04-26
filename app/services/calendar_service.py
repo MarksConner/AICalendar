@@ -86,6 +86,17 @@ def get_event_by_calendar_id(session: Session ,calendar_id: UUID,event_id: UUID)
         raise ValueError("Event not found")
     return event
 
+def delete_calendar_by_id(session: Session, calendar_id: UUID) -> bool:
+    calendar = (session.query(Calendar).filter(Calendar.calendar_id == calendar_id).first())
+    if calendar is None:
+        return False
+    
+    session.delete(calendar)
+    session.commit()
+
+    return True
+
+
 def get_calendars_by_user_id(session: Session, user_id: UUID) -> list[Calendar]:
     calendars = session.query(Calendar).filter(Calendar.user_id == user_id).all()
     return calendars
