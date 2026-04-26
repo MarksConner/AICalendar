@@ -207,6 +207,7 @@ export const TodaysPlanPage = () => {
         onTitleChange={planner.setNewTitle}
         schedulingHints={planner.schedulingHints}
       />
+
     </Stack>
   );
 };

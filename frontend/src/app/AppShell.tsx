@@ -14,6 +14,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { Button } from "./design_system/components/ui/Button";
 import { SidePanel } from "./design_system/components/ui/SidePanel";
 import { CalendarSidebar } from "./components/CalendarSidebar";
+import { LocalEventsPanel } from "./Pages/TodaysPlan/LocalEventsPanel";
 import { CalendarProvider } from "./contexts/CalendarContext";
 import type { CalendarView } from "./contexts/calendarState";
 import {
@@ -123,6 +124,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isLocalEventsOpen, setIsLocalEventsOpen] = useState(false);
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(
     () => localStorage.getItem("calendar_id") || null
   );
@@ -364,7 +366,12 @@ export function AppShell() {
                 <Button size="sm" variant="secondary" title="Search your calendar">
                   Search
                 </Button>
-                <Button size="sm" variant="secondary" title="Browse local events">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  title="Browse local events"
+                  onClick={() => setIsLocalEventsOpen(true)}
+                >
                   Local events
                 </Button>
               </ButtonGroup>
@@ -419,6 +426,12 @@ export function AppShell() {
             </Suspense>
           ) : null}
         </SidePanel>
+
+        {/* Local Events panel — opened from the app bar "Local events" button */}
+        <LocalEventsPanel
+          isOpen={isLocalEventsOpen}
+          onClose={() => setIsLocalEventsOpen(false)}
+        />
       </Box>
     </CalendarProvider>
   );

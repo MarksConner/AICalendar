@@ -8,6 +8,7 @@ import { Button } from "../../design_system/components/ui/Button";
 import { Modal } from "../../design_system/components/ui/Modal";
 import { Input } from "../../design_system/components/ui/Input";
 import { EventMap } from "../../components/EventMap";
+import { LocationAutocomplete } from "../../components/LocationAutocomplete";
 import { extractTimeHHMM } from "./dayPlannerUtils";
 
 type EventDetailsDialogProps = {
@@ -146,13 +147,11 @@ export const EventDetailsDialog = ({
                   onSetEditEndTime(htmlEvent.target.value)
                 }
               />
-              <Input
+              <LocationAutocomplete
                 label="Location (optional)"
                 placeholder="e.g., 123 Main St, Boston, MA"
                 value={editLocation}
-                onChange={(htmlEvent) =>
-                  onSetEditLocation(htmlEvent.target.value)
-                }
+                onChange={(address) => onSetEditLocation(address)}
               />
               <Input
                 label="Description"

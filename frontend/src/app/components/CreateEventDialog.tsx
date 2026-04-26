@@ -10,6 +10,7 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import { Button } from "../design_system/components/ui/Button";
 import { Input } from "../design_system/components/ui/Input";
 import { Modal } from "../design_system/components/ui/Modal";
+import { LocationAutocomplete } from "./LocationAutocomplete";
 import CalendarClient from "../api_client/CalendarClient";
 import { useState, useEffect } from "react";
 
@@ -300,11 +301,13 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
                 Organization
               </Typography>
 
-              <Input
+              <LocationAutocomplete
                 label="Location"
                 placeholder="e.g., Zoom / SEM building"
                 value={eventFormData.location}
-                onChange={handleEventChange("location")}
+                onChange={(address) =>
+                  setEventFormData((prev) => ({ ...prev, location: address }))
+                }
               />
 
               <Input

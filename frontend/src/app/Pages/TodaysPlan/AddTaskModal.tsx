@@ -6,6 +6,7 @@ import { Banner } from "../../design_system/components/ui/Banner";
 import { Button } from "../../design_system/components/ui/Button";
 import { Input } from "../../design_system/components/ui/Input";
 import { Modal } from "../../design_system/components/ui/Modal";
+import { LocationAutocomplete } from "../../components/LocationAutocomplete";
 
 type AddTaskModalProps = {
   addTaskError: string | null;
@@ -73,11 +74,12 @@ export function AddTaskModal({
           value={newTime}
           onChange={(event) => onTimeChange(event.target.value)}
         />
-        <Input
+        {/* coords are unused for tasks — only the address string is stored */}
+        <LocationAutocomplete
           label="Location (optional)"
           placeholder="e.g., 123 Main St, Boston, MA"
           value={newLocation}
-          onChange={(event) => onLocationChange(event.target.value)}
+          onChange={(address) => onLocationChange(address)}
         />
         <Input
           label="Description (optional)"
