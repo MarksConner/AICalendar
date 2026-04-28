@@ -354,6 +354,16 @@ export const AiChatPanel = () => {
             setDraft(event.target.value);
             setHasMicDraft(false);
           }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              if (draft.trim() && !isLoading && !isHistoryLoading) {
+                handleSubmit(event as any);
+              }
+            }
+          }}
+          multiline
+          maxRows={6}
           sx={{ flex: 1 }}
         />
         <Button

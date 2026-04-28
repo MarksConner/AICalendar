@@ -7,6 +7,7 @@ import {
   CardContent,
   CardHeader,
 } from "../../design_system/components/ui/Card";
+import { Button } from "../../design_system/components/ui/Button";
 import { EventBlock } from "./EventBlock";
 import {
   formatHourLabel,
@@ -25,10 +26,12 @@ type DayGridProps = {
   error: string | null;
   hours: number[];
   interactionState: EventInteractionState | null;
+  isCreatingEvent: boolean;
   isLoading: boolean;
   isToday: boolean;
   itemsCount: number;
   nowMinutes: number;
+  onOpenAdd: () => void;
   onOpenEvent: (eventId: string) => void;
   onStartInteraction: (
     event: ReactPointerEvent<HTMLElement>,
@@ -44,10 +47,12 @@ export function DayGrid({
   error,
   hours,
   interactionState,
+  isCreatingEvent,
   isLoading,
   isToday,
   itemsCount,
   nowMinutes,
+  onOpenAdd,
   onOpenEvent,
   onStartInteraction,
   positionedItems,
@@ -55,10 +60,13 @@ export function DayGrid({
 }: DayGridProps) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Typography variant="h6" fontWeight={600}>
           Day schedule
         </Typography>
+        <Button size="sm" onClick={onOpenAdd} disabled={isCreatingEvent}>
+          {isCreatingEvent ? "Saving…" : "+ Add task"}
+        </Button>
       </CardHeader>
       <CardContent sx={{ p: 0 }}>
         {isLoading && (

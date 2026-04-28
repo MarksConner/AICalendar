@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { keyframes } from "@mui/system";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -14,6 +15,16 @@ import { Input } from "../../design_system/components/ui/Input";
 import { Button } from "../../design_system/components/ui/Button";
 import CreateUserClient from "../../api_client/CreateUserClient";
 import LoginClient from "../../api_client/Auth"; 
+
+const floatAnim = keyframes`
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+`;
+
+const fadeInAnim = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
 
 export const CreateUserPage = () => {
   const navigate = useNavigate();
@@ -79,12 +90,54 @@ export const CreateUserPage = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: "background.default",
-        color: "text.primary",
+        background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 45%, #7b2ff7 100%)",
         px: 2,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <Card variant="elevated" sx={{ width: "100%", maxWidth: 460 }}>
+      <Box sx={{
+        position: "absolute", width: 500, height: 500, borderRadius: "50%",
+        background: "rgba(123, 47, 247, 0.25)", filter: "blur(90px)",
+        top: "-15%", right: "-10%", pointerEvents: "none",
+      }} />
+      <Box sx={{
+        position: "absolute", width: 350, height: 350, borderRadius: "50%",
+        background: "rgba(30, 60, 114, 0.35)", filter: "blur(70px)",
+        bottom: "-5%", left: "-8%", pointerEvents: "none",
+      }} />
+      <Box sx={{
+        position: "absolute", width: 250, height: 250, borderRadius: "50%",
+        background: "rgba(42, 82, 152, 0.3)", filter: "blur(60px)",
+        top: "40%", left: "20%", pointerEvents: "none",
+      }} />
+
+      <Box sx={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        gap: 2, position: "relative", zIndex: 1, width: "100%", maxWidth: 460,
+      }}>
+        <Typography
+          sx={{
+            fontSize: "clamp(3rem, 8vw, 5.5rem)",
+            fontWeight: 800,
+            letterSpacing: "0.08em",
+            color: "rgba(255, 255, 255, 0.22)",
+            textShadow: "0 0 60px rgba(255, 255, 255, 0.15)",
+            userSelect: "none",
+            pointerEvents: "none",
+            animation: `${fadeInAnim} 1s ease-out forwards, ${floatAnim} 5s ease-in-out 1s infinite`,
+          }}
+        >
+          Welcome
+        </Typography>
+
+        <Card variant="elevated" sx={{
+          width: "100%",
+          background: "rgba(255, 255, 255, 0.88)",
+          backdropFilter: "blur(24px)",
+          border: "1px solid rgba(255, 255, 255, 0.35)",
+          boxShadow: "0 12px 40px rgba(0, 0, 0, 0.35)",
+        }}>
         <CardHeader sx={{ textAlign: "center" }}>
           <Typography variant="h5" fontWeight={600}>
             Create your account
@@ -158,7 +211,7 @@ export const CreateUserPage = () => {
             <Button fullWidth type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Creating account…" : "Create account"}
             </Button>
-            <Typography variant="caption" color="text.secondary" align="center">
+            <Typography variant="body2" color="text.secondary" align="center">
               Already have an account?{" "}
               <Link
                 component="button"
@@ -173,6 +226,7 @@ export const CreateUserPage = () => {
           </CardFooter>
         </Box>
       </Card>
+      </Box>
     </Box>
   );
 };

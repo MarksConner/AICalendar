@@ -100,7 +100,7 @@ function NavBar() {
         ))}
       </Box>
 
-      <Button size="sm" onClick={() => navigate("/login")}>
+      <Button size="sm" onClick={() => navigate("/create-user")}>
         Get Started
       </Button>
     </Box>
@@ -229,7 +229,7 @@ function HeroSection() {
             <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
               <Button
                 size="lg"
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/create-user")}
                 style={{ gap: 8 }}
               >
                 Get Started
