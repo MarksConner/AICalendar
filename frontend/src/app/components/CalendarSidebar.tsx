@@ -223,7 +223,7 @@ export const CalendarSidebar = () => {
                     }}
                     size="sm"
                     variant="ghost"
-                    startIcon={<span><FileDownloadIcon /></span>} //** */
+                    startIcon={<FileDownloadIcon />}
                     onClick={async () => {
                       if (!calendar.calendar_id) return;
                       const calendarClient = new CalendarClient();
