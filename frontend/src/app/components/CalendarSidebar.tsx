@@ -16,6 +16,7 @@ import {
 import { Button } from "../design_system/components/ui/Button";
 import IconButton from "@mui/material/IconButton";
 import CalendarClient from "../api_client/CalendarClient";
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 type BackendCalendar = {
   calendar_id: string;
@@ -222,7 +223,7 @@ export const CalendarSidebar = () => {
                     }}
                     size="sm"
                     variant="ghost"
-                    startIcon={<span>↓</span>}
+                    startIcon={<span><FileDownloadIcon /></span>} //** */
                     onClick={async () => {
                       if (!calendar.calendar_id) return;
                       const calendarClient = new CalendarClient();
@@ -308,16 +309,6 @@ export const CalendarSidebar = () => {
         </Box>
       </Box>
 
-      <Divider />
-
-      <Box>
-        <Typography variant="caption" color="text.secondary">
-          Other
-        </Typography>
-        <Box sx={{ mt: 0.5 }}>
-          <SidebarLink to="/proposals" label="Proposals" />
-        </Box>
-      </Box>
     </Box>
   );
 };

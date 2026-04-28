@@ -21,7 +21,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Mic,
   MessageCircle,
 } from "lucide-react";
 
@@ -355,17 +354,6 @@ export function AppShell() {
                   },
                 }}
               >
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  startIcon={<Mic size={16} />}
-                  title="Send a voice note"
-                >
-                  Voice message
-                </Button>
-                <Button size="sm" variant="secondary" title="Search your calendar">
-                  Search
-                </Button>
                 <Button
                   size="sm"
                   variant="secondary"

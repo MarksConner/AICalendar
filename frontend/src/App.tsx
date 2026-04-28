@@ -33,11 +33,6 @@ const EventDetailsPage = lazy(() =>
     default: module.EventDetailsPage,
   }))
 );
-const ProposalsPage = lazy(() =>
-  import("./app/Pages/Proposals/ProposalsPage").then((module) => ({
-    default: module.ProposalsPage,
-  }))
-);
 const AppShell = lazy(() =>
   import("./app/AppShell").then((module) => ({
     default: module.AppShell,
@@ -62,7 +57,6 @@ function App() {
         <Route element={<AppShell />}>
           <Route path="/today" element={<TodaysPlanPage />} />
           <Route path="/events/:eventId" element={<EventDetailsPage />} />
-          <Route path="/proposals" element={<ProposalsPage />} />
         </Route>
 
         {/* Fallback */}
