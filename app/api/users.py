@@ -71,10 +71,7 @@ async def send_verification_email(user_data: UserEmailVerify,db: Session = Depen
     message = create_message([user.email],"Verify Email",verify_link)
 
     try:
-        await asyncio.wait_for(
-            mail.send_message(message),
-            timeout=15
-        )
+        await asyncio.wait_for(mail.send_message(message),timeout=50)
         return {"message": "Verification email sent"}
 
     except asyncio.TimeoutError:
