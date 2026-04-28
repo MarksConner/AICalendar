@@ -9,6 +9,8 @@ from app.config import get_current_user
 from datetime import datetime, timezone
 from app.services.verify_email import mail, create_message
 from app.security.jwt import check_refresh_token_expiration, create_refresh_token
+import asyncio
+import os
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -56,14 +58,39 @@ def login_route(user: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/send_verification_email")
 async def send_verification_email(user_data: UserEmailVerify,db: Session = Depends(get_db)):
+    
     user = get_user_by_email(db, user_data.email)
     if not user:
+        print("USER NOT FOUND", flush=True)
         raise HTTPException(status_code=404, detail="User not found")
 
-    verify_link = f"http://127.0.0.1:8000/users/verify_email?token={user.email_verification_token}" #Replace this with real url at some point
-    message = create_message([user.email], "Verify Email", verify_link)
-    await mail.send_message(message)
-    return {"message": "Verification email sent"}
+    backend_url = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+
+    verify_link = (f"{backend_url}/users/verify_email"f"?token={user.email_verification_token}")
+
+    message = create_message([user.email],"Verify Email",verify_link)
+
+    try:
+        await asyncio.wait_for(
+            mail.send_message(message),
+            timeout=15
+        )
+        return {"message": "Verification email sent"}
+
+    except asyncio.TimeoutError:
+        print("EMAIL SEND TIMEOUT", flush=True)
+        raise HTTPException(
+            status_code=504,
+            detail="Email service timed out."
+        )
+
+    except Exception as e:
+        print("EMAIL SEND ERROR:", repr(e), flush=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Email failed: {str(e)}"
+        )
+    
 
 @router.post("/send_recover_password_email")
 async def send_recover_password_email(user_data: UserEmailVerify, db: Session = Depends(get_db)):
