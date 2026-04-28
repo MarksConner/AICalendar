@@ -12,6 +12,7 @@ import {
 import ChatClient from "../api_client/ChatClient";
 import { ThinkingSymbol } from "../design_system/components/ui/ThinkingSymbol";
 import { useCalendar } from "../contexts/CalendarContext";
+import { useGeolocation } from "../hooks/useGeolocation";
 
 // Chat message construct
 type ChatMessage = {
@@ -41,6 +42,7 @@ export const AiChatPanel = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicDraft, setHasMicDraft] = useState(false);
   const {selectedCalendarId, refreshEvents} = useCalendar();
+  const geolocation = useGeolocation(true);
 
   const chatClient = useMemo(() => new ChatClient(), []);
 
@@ -207,7 +209,7 @@ export const AiChatPanel = () => {
         console.log("sendMessageAPI data:", sendData);
       }
 
-      const aiResponse = await chatClient.askAI(trimmed, calendarId,chatId);
+      const aiResponse = await chatClient.askAI(trimmed, calendarId,chatId,  geolocation.lat, geolocation.lng);
 
       if (!aiResponse.ok) {
         addAssistantMessage("Failed to get AI response.");

@@ -10,14 +10,13 @@ from typing import Any, Optional, Dict
 from backend.llm_agent import ask_llm, llm_summarize_chat_history
 from backend.schedule import Schedule
 from backend.errors import ConflictError
-from backend.mapbox import get_directions
-
+from app.services.mapbox_service import get_route, geocode_location
 from app.db import SessionLocal
 from app.services.calendar_service import get_calendar_context
 from app.services.chat_service import get_chat_context, more_than_8_messages, summarize_chat_history
 from app.services.events_service import (
     create_event, update_event, remove_event, add_event_participant,
-    get_participants_for_event, remove_event_participant, get_participant_details
+    get_participants_for_event, remove_event_participant, get_participant_details, 
 )
 
 def get_db():
@@ -36,6 +35,10 @@ class UserMessage(BaseModel):
     location: str | None = None
     chat_id: str | None = None
     current_time: Optional[Dict[str, Any]] = None
+    
+    user_latitude: float | None = None
+    user_longitude: float | None = None
+
 
 @router.post("")
 def chat(data: UserMessage):
@@ -47,6 +50,7 @@ def chat(data: UserMessage):
 
     # no DB session held during LLM call
     llm_output = ask_llm(data.message,calendar_context=calendar_context,chat_context=chat_context, current_time = data.current_time)
+    print("RAW LLM OUTPUT:", llm_output, flush=True)
 
     if not llm_output:
         return {"error": "LLM returned an empty response"}
@@ -73,7 +77,10 @@ def chat(data: UserMessage):
 
         for action in actions:
             intent = action.get("intent", "unknown")
-
+        
+            print("INTENT:", intent, flush=True)
+            print("ACTION:", action, flush=True)
+            
             if intent == "chat":
                 results.append({
                     "response": action.get("response", "Hello! How can I help you?"),
@@ -182,15 +189,34 @@ def chat(data: UserMessage):
                     results.append({"error": str(e)})
 
             
-            elif intent == "traffic_action":
-                if not data.location or not action.get("location"):
-                    return {"error": "Missing starting location or destination."}
+            elif intent == "traffic_info":
+                event_name = action.get("event_name") or action.get("title") or "your event"
+                destination = action.get("location") or action.get("full_address")
 
-                travel = get_directions(data.location, action["location"])
-                eta = travel['routes'][0]['duration'] / 60
+                if data.user_latitude is None or data.user_longitude is None:
+                    return {"error": "Missing user latitude or longitude."}
+
+                if not destination:
+                    return {"error": f"I found '{event_name}', but it does not have a saved location."}
+
+                route = get_route(
+                    user_longitude=data.user_longitude,
+                    user_latitude=data.user_latitude,
+                    destination=destination,
+                )
+
+                duration_minutes = route["duration_seconds"] / 60
                 return {
-                    "response": f"Traffic to {action['location']} is {eta:.1f} minutes."
+                    "response": f"It will take about {duration_minutes:.1f} minutes to drive to '{event_name}'.",
+                    "action": "traffic_action",
+                    "event_name": event_name,
+                    "destination": route["destination_name"],
+                    "duration_seconds": route["duration_seconds"],
+                    "duration_minutes": duration_minutes,
+                    "distance_meters": route["distance_meters"],
+                    "geometry": route["geometry"],
                 }
+
 
             #handle simple chatting
             elif intent == "chat":
@@ -228,7 +254,8 @@ def chat(data: UserMessage):
                     processed_actions += 1
 
                     if(update_result):
-                        results.append({"response": f"Event '{event_name}' updated successfully!",
+                        display_name = action.get("event_name") or action.get("title") or "selected event"
+                        results.append({"response": f"Event '{display_name}' updated successfully!",
                             "action": "update_event",
                             "event_id": event_id,})
         
@@ -247,10 +274,12 @@ def chat(data: UserMessage):
                     continue
 
                 try:
+                    event_name = action.get("event_name") or action.get("title") or "selected event"
                     delete_result = remove_event(
                         db=session,
                         event_id=uuid.UUID(event_id),
                     )
+                    
 
                     if delete_result:
                         results.append({
@@ -271,9 +300,7 @@ def chat(data: UserMessage):
                         
             elif intent == "clarify": #asks user for missing action needed for update or delete
                 message = action.get("message", "Can you please clarify your request?")
-                return {
-                    "response": message
-                }
+                return { "response": message}
 
             elif intent == "add_participant":
                 event_id = action.get("event_id")
@@ -463,3 +490,6 @@ def handle_recurrence(action: dict[str, Any]) -> list[tuple[datetime, datetime]]
         raise ValueError("Too many recurring occurrences. Limit is 120.")
 
     return occurrences
+
+def handle_list_all_participants_of_an_event():
+    return null

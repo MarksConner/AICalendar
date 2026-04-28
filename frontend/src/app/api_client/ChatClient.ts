@@ -57,11 +57,11 @@ export default class ChatClient {
   });
 }
 
-  async askAI(message: string, calendar_id: string, chat_id: string): Promise<Response> {
+  async askAI(message: string, calendar_id: string, chat_id: string,   user_latitude?: number | null, user_longitude?: number | null): Promise<Response> {
     return this.request({
       method: "POST",
       url: "/chat",
-      body: { message, calendar_id, chat_id, current_time: buildUserTimezoneAndTimeObject(),},
+      body: { message, calendar_id, chat_id, current_time: buildUserTimezoneAndTimeObject(), user_latitude, user_longitude, },
     });
   }
 }

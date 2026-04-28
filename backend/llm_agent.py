@@ -153,11 +153,15 @@ Rules for add_event:
 - 12 AM = 00:00
 - 12 PM = 12:00
 
+Rules for traffic_info:
+- If user asks for distance to an event call traffic_info
+- If the full_address of an event is not present in events for a calendar asks user for the full address
 
 If intent == "traffic_info", include:
 {
   "intent": "traffic_info",
   "location": string
+   "location": "EVENT_ADDRESS_FROM_CALENDAR_CONTEXT" 
 }
     
 If intent == "chat", include:

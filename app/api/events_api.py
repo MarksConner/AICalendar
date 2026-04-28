@@ -104,18 +104,23 @@ def get_local_event_suggestions(request: LocalEventsRequest):
 
 @router.post("/add-suggested")
 def add_suggested_event(request: AddSuggestedEventRequest, db: Session = Depends(get_db)):
-    end_time = request.end_time or request.start_time
-    created_event = create_event(
-        db,
-        request.calendar_id,
-        request.title,
-        request.address or "",
-        request.start_time,
-        end_time,
-        request.description or "",
-        request.priority_rank,
-    )
-    return {"message": "Suggested event added successfully", "event_id": created_event.event_id}
+    try:
+        end_time = request.end_time or request.start_time
+        created_event = create_event(
+            db,
+            request.calendar_id,
+            request.title,
+            request.address or "",
+            request.start_time,
+            end_time,
+            request.description or "",
+            request.priority_rank,
+        )
+        return {"message": "Suggested event added successfully", "event_id": created_event.event_id}
+    
+    except Exception as e:
+        print("ADD SUGGESTED EVENT ERROR:", str(e), flush=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 ## Participants helpers and routes
@@ -138,6 +143,7 @@ def add_participant_route(
             full_address=participant.full_address,
         )
         return participant_to_response(created_participant)
+    
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
