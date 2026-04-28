@@ -23,6 +23,13 @@ const RecoverAccountPage = lazy(() =>
     default: module.RecoverAccountPage,
   }))
 );
+
+const ResetLogin = lazy(() =>
+  import("./app/Pages/RecoverAccount/ResetPassword").then((module) => ({
+    default: module.ResetLogin,
+  }))
+);
+
 const TodaysPlanPage = lazy(() =>
   import("./app/Pages/TodaysPlan/TodaysPlanPage").then((module) => ({
     default: module.TodaysPlanPage,
@@ -33,11 +40,7 @@ const EventDetailsPage = lazy(() =>
     default: module.EventDetailsPage,
   }))
 );
-const ProposalsPage = lazy(() =>
-  import("./app/Pages/Proposals/ProposalsPage").then((module) => ({
-    default: module.ProposalsPage,
-  }))
-);
+
 const AppShell = lazy(() =>
   import("./app/AppShell").then((module) => ({
     default: module.AppShell,
@@ -57,12 +60,12 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/create-user" element={<CreateUserPage />} />
         <Route path="/recover-account" element={<RecoverAccountPage />} />
+        <Route path="/update" element={<ResetLogin />} />
 
         {/* App routes inside shell (require auth) */}
         <Route element={<AppShell />}>
           <Route path="/today" element={<TodaysPlanPage />} />
           <Route path="/events/:eventId" element={<EventDetailsPage />} />
-          <Route path="/proposals" element={<ProposalsPage />} />
         </Route>
 
         {/* Fallback */}

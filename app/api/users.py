@@ -94,7 +94,7 @@ async def send_verification_email(user_data: UserEmailVerify,db: Session = Depen
 
 @router.post("/send_recover_password_email")
 async def send_recover_password_email(user_data: UserEmailVerify,db: Session = Depends(get_db)):
-    backend_url = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     user = get_user_by_email(db, user_data.email)
 
     if not user:
@@ -105,7 +105,7 @@ async def send_recover_password_email(user_data: UserEmailVerify,db: Session = D
     create_reset_token(db, user.email)
     # Refresh user so password_reset_token is updated
     db.refresh(user)
-    reset_link = (f"{backend_url}/users/update_password" f"?token={user.password_reset_token}")
+    reset_link = (f"{frontend_url}/update"f"?token={user.password_reset_token}"f"&email={user.email}")
     message = create_message([user.email],"Reset Password",reset_link)
     try:
         await asyncio.wait_for(
