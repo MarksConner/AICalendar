@@ -93,18 +93,31 @@ async def send_verification_email(user_data: UserEmailVerify,db: Session = Depen
     
 
 @router.post("/send_recover_password_email")
-async def send_recover_password_email(user_data: UserEmailVerify, db: Session = Depends(get_db)):
+async def send_recover_password_email(user_data: UserEmailVerify,db: Session = Depends(get_db)):
+    backend_url = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
     user = get_user_by_email(db, user_data.email)
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if not user.email_verified:
         raise HTTPException(status_code=403, detail="Email not verified")
+    # Create reset token first
     create_reset_token(db, user.email)
-    verify_link = (f"http://localhost:5173/resetlogin"f"?email={user.email}&token={user.password_reset_token}")
-    message = create_message([user.email], "Verify Email", verify_link)
-    await mail.send_message(message)
-    return {"message": "Email was sent"}
+    # Refresh user so password_reset_token is updated
+    db.refresh(user)
+    reset_link = (f"{backend_url}/users/update_password" f"?token={user.password_reset_token}")
+    message = create_message([user.email],"Reset Password",reset_link)
+    try:
+        await asyncio.wait_for(
+            mail.send_message(message),
+            timeout=15
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Email service timed out.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Email failed: {str(e)}")
 
+    return {"message": "Recovery email was sent"}
 
 @router.post("/update_password")
 async def update_password(user_data: UserUpdatePassword, db: Session = Depends(get_db)):
