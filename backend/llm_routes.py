@@ -13,7 +13,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 @router.post("/day-suggestions", response_model=SuggestionResponse)
 def get_day_suggestions(request: SuggestionRequest):
-    prompt = generate_prompt(request.date, request.events)
+    prompt = generate_prompt(request.date, request.events, request.current_time)
     llm_output = ask_day_hints_llm(prompt)
     suggestions = parse_llm_response(llm_output)
     return SuggestionResponse(suggestions=suggestions)

@@ -1,6 +1,8 @@
 import type { DailyTimelineItem } from "../Types/Calendar";
 import type { AiSuggestionsResponse } from "../services/contracts";
 import { requestJson } from "../services/adapters/http/httpClient";
+import { buildUserTimezoneAndTimeObject } from "../Pages/TodaysPlan/dayPlannerUtils";
+
 
 const toDateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -150,7 +152,11 @@ export async function getDayAiSuggestions(
   const body = {
     date: toDateKey(date),
     events: enrichedItems.map(mapTimelineItemToAiEvent),
+    current_time: buildUserTimezoneAndTimeObject(),
   };
+
+  console.log("AI suggestion body:", body);
+
   return requestJson<AiSuggestionsResponse>("/ai/day-suggestions", {
     method: "POST",
     body,

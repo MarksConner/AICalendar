@@ -74,6 +74,7 @@ class EventForSuggestion(BaseModel):
 
 class SuggestionRequest(BaseModel):
     date: str
+    current_time: dict | None = None
     events: List[EventForSuggestion] = Field(default_factory=list)
 
 
@@ -143,12 +144,26 @@ def format_events_for_llm(events: List[EventForSuggestion]) -> str:
     return "\n".join(lines)
 
 
-def generate_prompt(date: str, events: List[EventForSuggestion]) -> str:
+def generate_prompt(date: str,events: List[EventForSuggestion],current_time: Optional[dict[str, Any]] = None) -> str:
+    current_time = current_time or {}
+    user_current_time = (current_time.get("user_current_datetime")or current_time.get("user_current_time")or "Unknown")
+    user_timezone = current_time.get("user_timezone") or "Unknown"
+    next_upcoming_event_name = get_next_upcoming_event_name(events, current_time)
+    print(user_current_time)
+
     return f"""
 You are generating AI day hints for ONE selected calendar day only.
+Next upcoming event for Schedule Insight:
+{next_upcoming_event_name or "No upcoming events left today"}
 
 Selected date:
 {date}
+
+User current local time:
+{user_current_time}
+
+User timezone:
+{user_timezone}
 
 Events for this selected day only:
 {format_events_for_llm(events)}
@@ -159,7 +174,9 @@ The 3 objects must be:
 
 1. Schedule Insight event card
 - category must be "Schedule Insight"
-- Pick the event with the earliest datetime as the upcoming event.
+- Use ONLY the event named under "Next upcoming event for Schedule Insight".
+- Do not choose any other event for Schedule Insight.
+- If it says "No upcoming events left today", say there are no remaining upcoming events.
 - Include event_name.
 - Include useful event details in description.
 - If the event has participants, summarize them in participants_summary.
@@ -290,3 +307,34 @@ def parse_llm_response(llm_output: str) -> List[SuggestionItem]:
             suggestions.append(normalize_suggestion_item(item))
 
     return suggestions
+
+def get_next_upcoming_event_name(events: List[EventForSuggestion],current_time: Optional[dict[str, Any]] = None) -> Optional[str]:
+    current_time = current_time or {}
+    user_current_minutes = current_time.get("user_current_minutes")
+
+    if user_current_minutes is None:
+        return None
+
+    upcoming_events = []
+
+    for event in events:
+        start = event.get_start()
+        if not start:
+            continue
+
+        try:
+            event_time = start.split("T")[1]
+            hour = int(event_time[0:2])
+            minute = int(event_time[3:5])
+            event_minutes = hour * 60 + minute
+
+            if event_minutes > user_current_minutes:
+                upcoming_events.append((event_minutes, event.get_title()))
+        except Exception:
+            continue
+
+    if not upcoming_events:
+        return None
+
+    upcoming_events.sort()
+    return upcoming_events[0][1]
