@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 from pathlib import Path
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
@@ -27,6 +28,22 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 #Mail Settings to send verification emails
 BASE_DIR = Path(__file__).resolve().parent
 class Settings(BaseSettings):
+    GOOGLE_PLACES_API_KEY: Optional[str] = None
+    JWT_SECRET: str
+    # Resend email API
+    RESEND_API_KEY: str
+    MAIL_FROM: str
+    MAIL_FROM_NAME: str = "AICalendar Team"
+    # URLs
+    BACKEND_URL: str
+    FRONTEND_URL: str
+    TEMPLATE_FOLDER: Path = Path(BASE_DIR, "templates")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+Config = Settings()
+
+'''
+class Settings(BaseSettings):
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: str
@@ -40,6 +57,7 @@ class Settings(BaseSettings):
     TEMPLATE_FOLDER: Path = Path(BASE_DIR, 'templates')
     model_config = SettingsConfigDict(env_file =".env",extra="ignore")
 Config = Settings()
+'''
 
 #Current User
 def get_db():

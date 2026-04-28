@@ -7,7 +7,7 @@ from app.db import SessionLocal
 from app.services.user_service import (create_user,delete_user_by_email,verify_user_email,get_user_by_email,get_user_by_user_id, login_credentials,reset_password_token, create_reset_token, login_credentials_user, create_access_token)
 from app.config import get_current_user
 from datetime import datetime, timezone
-from app.services.verify_email import mail, create_message
+from app.services.verify_email import send_email
 from app.security.jwt import check_refresh_token_expiration, create_refresh_token
 import asyncio
 import os
@@ -68,10 +68,15 @@ async def send_verification_email(user_data: UserEmailVerify,db: Session = Depen
 
     verify_link = (f"{backend_url}/users/verify_email"f"?token={user.email_verification_token}")
 
-    message = create_message([user.email],"Verify Email",verify_link)
+    body = f"""
+    <h2>Verify Email</h2>
+    <p>Click the link below to verify your account:</p>
+    <p><a href="{verify_link}">Verify Email</a></p>
+    <p>{verify_link}</p>
+    """
 
     try:
-        await asyncio.wait_for(mail.send_message(message),timeout=50)
+        send_email([user.email],"Verify Email",body)
         return {"message": "Verification email sent"}
 
     except asyncio.TimeoutError:
@@ -103,9 +108,14 @@ async def send_recover_password_email(user_data: UserEmailVerify,db: Session = D
     # Refresh user so password_reset_token is updated
     db.refresh(user)
     reset_link = (f"{frontend_url}/update"f"?token={user.password_reset_token}"f"&email={user.email}")
-    message = create_message([user.email],"Reset Password",reset_link)
+    body = f"""
+    <h2>Reset Password</h2>
+    <p>Click the link below to reset your password:</p>
+    <p><a href="{reset_link}">Reset Password</a></p>
+    """
+
     try:
-        await asyncio.wait_for(mail.send_message(message),timeout=60)
+        send_email([user.email],"Reset Password",body)
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Email service timed out.")
     except Exception as e:

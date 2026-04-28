@@ -1,3 +1,21 @@
+import resend
+from app.config import Config
+
+resend.api_key = Config.RESEND_API_KEY
+
+
+def send_email(recipients: list[str], subject: str, body: str):
+    params = {
+        "from": Config.MAIL_FROM,
+        "to": recipients,
+        "subject": subject,
+        "html": body,
+    }
+
+    return resend.Emails.send(params)
+
+'''
+Old email handler not longer used because of Railway incompatibility
 import smtplib
 from fastapi_mail import FastMail, ConnectionConfig, MessageSchema, MessageType
 from app.config import Config
@@ -26,5 +44,6 @@ def create_message(recipients: list[str], subject:str, body:str):
     )
 
     return message
+'''
 
     
