@@ -3,7 +3,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useCallback } from "react";
 import { Banner } from "../../design_system/components/ui/Banner";
-import { Button } from "../../design_system/components/ui/Button";
 import { useCalendar } from "../../contexts/useCalendar";
 import type { CalendarView } from "../../contexts/calendarState";
 import { AddTaskModal } from "./AddTaskModal";
@@ -88,30 +87,13 @@ export const TodaysPlanPage = () => {
       sx={{ maxWidth: selectedView === "month" ? 900 : "100%" }}
     >
       {/* Page header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 2,
-          flexWrap: "wrap",
-        }}
-      >
-        <Box>
-          <Typography variant="h5" fontWeight={600}>
-            {pageTitle}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {pageSubtitle}
-          </Typography>
-        </Box>
-        <Button
-          size="sm"
-          onClick={planner.handleOpenAdd}
-          disabled={planner.isCreatingEvent}
-        >
-          {planner.isCreatingEvent ? "Saving task…" : "Add task"}
-        </Button>
+      <Box>
+        <Typography variant="h5" fontWeight={600}>
+          {pageTitle}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {pageSubtitle}
+        </Typography>
       </Box>
 
       {planner.persistError && (
@@ -131,10 +113,12 @@ export const TodaysPlanPage = () => {
               error={planner.error}
               hours={planner.hours}
               interactionState={planner.interactionState}
+              isCreatingEvent={planner.isCreatingEvent}
               isLoading={planner.isLoading}
               isToday={planner.isToday}
               itemsCount={planner.items.length}
               nowMinutes={planner.nowMinutes}
+              onOpenAdd={planner.handleOpenAdd}
               onOpenEvent={planner.handleOpenEventDetails}
               onStartInteraction={planner.startEventInteraction}
               positionedItems={planner.positionedItems}

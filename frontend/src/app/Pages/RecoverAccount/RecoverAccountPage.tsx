@@ -46,12 +46,36 @@ export const RecoverAccountPage = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: "background.default",
-        color: "text.primary",
+        background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 45%, #7b2ff7 100%)",
         px: 2,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <Card variant="elevated" sx={{ width: "100%", maxWidth: 440 }}>
+      <Box sx={{
+        position: "absolute", width: 500, height: 500, borderRadius: "50%",
+        background: "rgba(123, 47, 247, 0.25)", filter: "blur(90px)",
+        top: "-15%", right: "-10%", pointerEvents: "none",
+      }} />
+      <Box sx={{
+        position: "absolute", width: 350, height: 350, borderRadius: "50%",
+        background: "rgba(30, 60, 114, 0.35)", filter: "blur(70px)",
+        bottom: "-5%", left: "-8%", pointerEvents: "none",
+      }} />
+      <Box sx={{
+        position: "absolute", width: 250, height: 250, borderRadius: "50%",
+        background: "rgba(42, 82, 152, 0.3)", filter: "blur(60px)",
+        top: "40%", left: "20%", pointerEvents: "none",
+      }} />
+
+      <Card variant="elevated" sx={{
+        width: "100%", maxWidth: 440,
+        background: "rgba(255, 255, 255, 0.88)",
+        backdropFilter: "blur(24px)",
+        border: "1px solid rgba(255, 255, 255, 0.35)",
+        boxShadow: "0 12px 40px rgba(0, 0, 0, 0.35)",
+        position: "relative", zIndex: 1,
+      }}>
         <CardHeader sx={{ textAlign: "center" }}>
           <Typography variant="h5" fontWeight={600}>
             Recover your account
