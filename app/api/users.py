@@ -105,10 +105,7 @@ async def send_recover_password_email(user_data: UserEmailVerify,db: Session = D
     reset_link = (f"{frontend_url}/update"f"?token={user.password_reset_token}"f"&email={user.email}")
     message = create_message([user.email],"Reset Password",reset_link)
     try:
-        await asyncio.wait_for(
-            mail.send_message(message),
-            timeout=15
-        )
+        await asyncio.wait_for(mail.send_message(message),timeout=60)
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Email service timed out.")
     except Exception as e:
