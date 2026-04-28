@@ -112,8 +112,8 @@ export function AddSuggestedEventModal({
         title: suggestion.title,
         description,
         address: suggestion.address ?? suggestion.venue_name ?? suggestion.title,
-        start_time: new Date(startTime).toISOString(),
-        end_time: endTime ? new Date(endTime).toISOString() : undefined,
+        start_time: startTime,
+        end_time: endTime || undefined,
         priority_rank: 3,
       });
       onClose();
