@@ -164,6 +164,49 @@ const normalizeUserCreateResponse = (raw: unknown): CreateUserResult => {
   };
 };
 
+const mapTimelineItemToAiEvent = (item: DailyTimelineItem) => {
+  const anyItem = item as any;
+
+  return {
+    event_name:
+      anyItem.event_name ??
+      anyItem.title ??
+      anyItem.name ??
+      "Untitled event",
+
+    start_time:
+      anyItem.start_time ??
+      anyItem.startTime ??
+      anyItem.start ??
+      null,
+
+    end_time:
+      anyItem.end_time ??
+      anyItem.endTime ??
+      anyItem.end ??
+      null,
+
+    full_address:
+      anyItem.full_address ??
+      anyItem.location ??
+      anyItem.address ??
+      null,
+
+    description:
+      anyItem.description ??
+      anyItem.event_description ??
+      null,
+
+    distance_from_user:
+    anyItem.travel_time_min > 0
+    ? `${anyItem.travel_time_min} min travel`
+    : null,
+
+    participants:
+      anyItem.participants ?? [],
+  };
+};
+
 export const httpDataService: AppDataService = {
   login(email, password) {
     return requestJson<RawLoginResponse>("/users/login", {
@@ -309,19 +352,14 @@ export const httpDataService: AppDataService = {
     );
   },
 
+  
   getDayAiSuggestions(date, items: DailyTimelineItem[]) {
-    return requestJson<AiSuggestionsResponse>("/ai/day-suggestions", {
-      method: "POST",
-      body: {
-        date: toDateKey(date),
-        events: (items ?? []).map((item) => ({
-          title: item.name ?? "",
-          startTime: item.start ?? null,
-          endTime: item.end ?? null,
-          location: item.location ?? null,
-          description: item.description ?? null,
-        })),
-      },
-    });
+  return requestJson<AiSuggestionsResponse>("/ai/day-suggestions", {
+    method: "POST",
+    body: {
+      date: toDateKey(date),
+      events: (items ?? []).map(mapTimelineItemToAiEvent),
+    },
+  });
   },
 };

@@ -149,9 +149,33 @@ export function AiSuggestionsPanel({ date, items }: AiSuggestionsPanelProps) {
                     {suggestion.title}
                   </Typography>
 
+                  {suggestion.event_name && (
+                    <Typography variant="body2" color="text.secondary">
+                      Event: {suggestion.event_name}
+                    </Typography>
+                  )}
+
                   {suggestion.description && (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary">
                       {suggestion.description}
+                    </Typography>
+                  )}
+
+                  {suggestion.distance_from_user && (
+                    <Typography variant="body2" color="text.secondary">
+                      Distance: {suggestion.distance_from_user}
+                    </Typography>
+                  )}
+
+                  {suggestion.participants_summary && (
+                    <Typography variant="body2" color="text.secondary">
+                      Participants: {suggestion.participants_summary}
+                    </Typography>
+                  )}
+
+                  {suggestion.reminder && (
+                    <Typography variant="body2" color="text.secondary">
+                      Reminder: {suggestion.reminder}
                     </Typography>
                   )}
                 </Box>

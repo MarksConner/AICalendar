@@ -1,57 +1,158 @@
-/**
- * MOCK ONLY — do not import this file outside of mockDataService.ts.
- *
- * When the real LLM endpoint is ready, implement getDayAiSuggestions()
- * in httpDataService.ts using:
- *   requestJson("/ai/day-suggestions", { method: "POST", body: { date, events: items } })
- */
 import type { DailyTimelineItem } from "../Types/Calendar";
 import type { AiSuggestionsResponse } from "../services/contracts";
+import { requestJson } from "../services/adapters/http/httpClient";
 
-const NETWORK_DELAY_MS = 900;
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+type UserCoords = {
+  latitude: number;
+  longitude: number;
+};
 
-/**
- * Mock implementation of the AI suggestions endpoint.
- *
- * In production this call hits the backend, which sends the date + schedule
- * context to the LLM and streams back personalised suggestions. The mock
- * returns static placeholder text so the UI can be built and tested before
- * the real endpoint is wired up.
- *
- * Replace this with a real fetch inside httpDataService.getDayAiSuggestions.
- */
+type TravelTimeResponse = {
+  travel_time_min?: number;
+  travelTimeMin?: number;
+  duration_minutes?: number;
+  durationMinutes?: number;
+  minutes?: number;
+};
+
+const getUserCoords = (): Promise<UserCoords | null> => {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+      },
+      () => {
+        resolve(null);
+      }
+    );
+  });
+};
+
+const extractTravelMinutes = (raw: TravelTimeResponse): number | null => {
+  const value =
+    raw.travel_time_min ??
+    raw.travelTimeMin ??
+    raw.duration_minutes ??
+    raw.durationMinutes ??
+    raw.minutes ??
+    null;
+
+  if (value === null || value === undefined) return null;
+
+  const minutes = Number(value);
+
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
+};
+
+const getTravelTimeForItem = async (item: DailyTimelineItem,coords: UserCoords | null): Promise<number | null> => {
+  if (!coords) return null;
+  if (!item.id) return null;
+
+  try {
+    const raw = await requestJson<TravelTimeResponse>(
+      `/events/event_id/${item.id}/travel_time?from_lat=${coords.latitude}&from_long=${coords.longitude}`
+    );
+
+    return extractTravelMinutes(raw);
+  } catch {
+    return null;
+  }
+};
+
+const enrichItemsWithTravelTime = async (
+  items: DailyTimelineItem[]
+): Promise<DailyTimelineItem[]> => {
+  if (!items.length) return [];
+
+  const coords = await getUserCoords();
+
+  return Promise.all(
+    items.map(async (item) => {
+      const travelTimeMin = await getTravelTimeForItem(item, coords);
+
+      return {
+        ...item,
+        travel_time_min: travelTimeMin ?? item.travel_time_min ?? 0,
+      };
+    })
+  );
+};
+
+const mapTimelineItemToAiEvent = (item: DailyTimelineItem) => {
+  const anyItem = item as any;
+
+  return {
+    event_name:
+      anyItem.event_name ??
+      anyItem.title ??
+      anyItem.name ??
+      "Untitled event",
+
+    start_time:
+      anyItem.start_time ??
+      anyItem.startTime ??
+      anyItem.start ??
+      null,
+
+    end_time:
+      anyItem.end_time ??
+      anyItem.endTime ??
+      anyItem.end ??
+      null,
+
+    full_address:
+      anyItem.full_address ??
+      anyItem.location ??
+      anyItem.address ??
+      null,
+
+    description:
+      anyItem.description ??
+      anyItem.event_description ??
+      null,
+
+    distance_from_user:
+      anyItem.travel_time_min > 0
+        ? `${anyItem.travel_time_min} min travel`
+        : null,
+
+    travel_time_min:
+      anyItem.travel_time_min > 0
+        ? anyItem.travel_time_min
+        : null,
+
+    participants:
+      Array.isArray(anyItem.participants) ? anyItem.participants : [],
+  };
+};
+
 export async function getDayAiSuggestions(
   date: Date,
   items: DailyTimelineItem[]
 ): Promise<AiSuggestionsResponse> {
-  await wait(NETWORK_DELAY_MS);
+  const enrichedItems = await enrichItemsWithTravelTime(items ?? []);
 
-  const eventCount = items.length;
-  const dateLabel = date.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-
-  return {
-    suggestions: [
-      {
-        id: "mock-ai-1",
-        category: "Schedule Insight",
-        title: `You have ${eventCount} event${eventCount !== 1 ? "s" : ""} on ${dateLabel}. Consider blocking a 30-minute buffer between back-to-back meetings to give yourself time to decompress and prepare.`,
-      },
-      {
-        id: "mock-ai-2",
-        category: "Tip",
-        title: "Your morning looks relatively open. High-focus tasks like deep work or creative projects are best tackled before midday when cognitive energy peaks.",
-      },
-      {
-        id: "mock-ai-3",
-        category: "Travel Alert",
-        title: "If any of your events require travel, check traffic conditions 30–45 minutes before departure to avoid delays during peak hours.",
-      },
-    ],
+  const body = {
+    date: toDateKey(date),
+    events: enrichedItems.map(mapTimelineItemToAiEvent),
   };
+  return requestJson<AiSuggestionsResponse>("/ai/day-suggestions", {
+    method: "POST",
+    body,
+  });
 }

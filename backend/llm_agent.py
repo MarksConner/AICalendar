@@ -152,6 +152,7 @@ Rules for add_event:
 - Do not guess duration_minutes if an explicit end time is given.
 - 12 AM = 00:00
 - 12 PM = 12:00
+- If user does not give the necessary fields ask him for it.
 
 Rules for traffic_info:
 - If user asks for distance to an event call traffic_info
@@ -169,11 +170,15 @@ If intent == "chat", include:
   "intent": "chat",
   "response": string
 }
+Rules for update event:
+
+- 
+
 if intent == "update_event", include:
 {
   "intent": "update_event",
   "event_id": string or null
-  "event_name": string (optional),
+  "event_name": string,
  "start_time": ISO8601 string (optional),
   "end_time": ISO8601 string (optional),
   "priority_rank": integer (optional),
@@ -283,6 +288,65 @@ Respond ONLY with valid JSON.
             "intent": "unknown",
             "error": str(e)
         })
+    
+    
+def ask_day_hints_llm(prompt: str) -> str:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return json.dumps([])
+
+    client = OpenAI(api_key=api_key)
+
+    system_prompt = """
+You generate AI day hints for a calendar app.
+
+You MUST return ONLY a valid JSON array.
+Do not return markdown.
+Do not return a JSON object with actions.
+Do not use intents.
+Do not invent missing event information.
+
+Each array item should have:
+- id
+- title
+- description
+- category
+- event_name
+- distance_from_user
+- participants_summary
+- reminder
+
+Allowed categories:
+- travel
+- tip
+- info
+- reminder
+""".strip()
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.2,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+        )
+
+        content = response.choices[0].message.content
+
+        if content is None:
+            return json.dumps([])
+
+        parsed = json.loads(content)
+
+        if not isinstance(parsed, list):
+            return json.dumps([])
+
+        return json.dumps(parsed)
+
+    except Exception as e:
+        return json.dumps([])
 
 # Summarizes chat history using the LLM. this returns a object with a string summary.
 def llm_summarize_chat_history(chat_history: list[Dict[str, Any]]) -> str:
