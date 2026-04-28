@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import MicIcon from '@mui/icons-material/Mic';
 import { Button } from "../design_system/components/ui/Button";
 import { Input } from "../design_system/components/ui/Input";
 import {
@@ -373,7 +374,7 @@ export const AiChatPanel = () => {
             },
           }}
         >
-          {isRecording ? "⏹" : hasMicDraft ? "📨" : "🎤"}
+          {isRecording ? "⏹" : hasMicDraft ? "📨" : <MicIcon />}
         </Button>
       </Box>
     </Stack>

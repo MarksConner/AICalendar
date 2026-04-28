@@ -40,7 +40,6 @@ const EventDetailsPage = lazy(() =>
     default: module.EventDetailsPage,
   }))
 );
-
 const AppShell = lazy(() =>
   import("./app/AppShell").then((module) => ({
     default: module.AppShell,
