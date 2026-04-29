@@ -1,4 +1,5 @@
 import type { CreateEventFormData } from "../components/CreateEventDialog";
+import { handleSessionTimeout } from "../services/auth/sessionTimeout";
 
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
@@ -19,7 +20,7 @@ export default class CalendarClient {
 
     async request(options: RequestOptions): Promise<Response> {
         const token = localStorage.getItem("access_token");
-        return fetch(this.base_url + options.url, {
+        const response = await fetch(this.base_url + options.url, {
             method: options.method,
             headers: {
                 "Content-Type": "application/json",
@@ -28,6 +29,12 @@ export default class CalendarClient {
             },
             body: options.body ? JSON.stringify(options.body) : null,
         });
+
+        if (response.status === 401) {
+            handleSessionTimeout();
+        }
+
+        return response;
     }
 
     async createCalendarAPI(calendar_name: string, date_start?: string, date_end?: string): Promise<Response> {
@@ -43,13 +50,19 @@ export default class CalendarClient {
         const formData = new FormData();
         formData.append("calendarName", calendarName);
         formData.append("icsFile", icsFile);
-        return fetch(this.base_url + "/calendar/import-ics", {
+        const response = await fetch(this.base_url + "/calendar/import-ics", {
             method: "POST",
             headers: {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: formData,
         });
+
+        if (response.status === 401) {
+            handleSessionTimeout();
+        }
+
+        return response;
     }
 
     async getCalendarsAPI(): Promise<Response> {
@@ -106,13 +119,19 @@ export default class CalendarClient {
         formData.append("date_end", date_end);
     }
 
-    return fetch(this.base_url + "/calendar/import-ics", {
+    const response = await fetch(this.base_url + "/calendar/import-ics", {
         method: "POST",
         headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: formData,
     });
+
+    if (response.status === 401) {
+        handleSessionTimeout();
+    }
+
+    return response;
     }   
    
     async exportCalendarAPI(calendar_id: string): Promise<Response> {

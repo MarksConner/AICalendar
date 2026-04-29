@@ -9,6 +9,8 @@
  *
  * Use requestJson() in httpDataService.ts to make API calls.
  */
+import { clearAuthStorage, handleSessionTimeout } from "../../auth/sessionTimeout";
+
 type QueryValue = string | number | boolean | null | undefined;
 
 type RequestJsonOptions = Omit<RequestInit, "body"> & {
@@ -65,25 +67,12 @@ function getAuthHeader() {
   return `Bearer ${token}`;
 }
 
-function clearAuthStorage() {
-  if (typeof window === "undefined") return;
-
-  window.localStorage.removeItem("access_token");
-  window.localStorage.removeItem("authToken");
-  window.localStorage.removeItem("refresh_token");
-  window.localStorage.removeItem("user_id");
-}
-
-function redirectToLogin() {
-  if (typeof window === "undefined") return;
-  window.location.href = "/login";
-}
 
 function getStoredRefreshToken() {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem("refresh_token");
 }
-async function tryRefreshAccessToken(): Promise<string | null> {
+export async function tryRefreshAccessToken(): Promise<string | null> {
   const refreshToken = getStoredRefreshToken();
   if (!refreshToken) return null;
 
@@ -155,9 +144,8 @@ export async function requestJson<T>(
     if (newAccessToken) {
       response = await doFetch(newAccessToken);
     } else {
-      clearAuthStorage();
-      redirectToLogin();
-      throw new Error("Session expired. Please log in again.");
+      handleSessionTimeout();
+      throw new Error("Session timed out");
     }
   }
 

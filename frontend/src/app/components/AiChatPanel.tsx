@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import MicIcon from '@mui/icons-material/Mic';
+import { Mic } from "lucide-react";
 import { Button } from "../design_system/components/ui/Button";
 import { Input } from "../design_system/components/ui/Input";
 import {
@@ -54,14 +54,63 @@ export const AiChatPanel = () => {
   };
 
   const addAssistantMessage = (text: string) => {
+    const normalized = text?.trim() || "I couldn't generate a response just yet.";
     setMessages((prev) => [
       ...prev,
       {
         id: `assistant-${Date.now()}`,
         role: "assistant",
-        text,
+        text: normalized,
       },
     ]);
+  };
+
+  const getAssistantTextFromPayload = (payload: any): string => {
+    const normalizeMessage = (value: string) => {
+      if (value === "Missing calendar_id for event creation.") {
+        return "Please select or create a calendar";
+      }
+      const lowered = value.toLowerCase();
+      if (
+        lowered.includes("openai_api_key is not set") ||
+        lowered.includes("insufficient_quota") ||
+        lowered.includes("rate limit") ||
+        lowered.includes("quota")
+      ) {
+        return "AI scheduling is temporarily unavailable right now. Please check the OpenAI key or billing setup and try again.";
+      }
+      return value;
+    };
+
+    if (Array.isArray(payload?.results)) {
+      const combined = payload.results
+        .map((item: any) => item?.response ?? item?.error ?? item?.message ?? item?.action)
+        .filter((value: unknown) => typeof value === "string" && value.trim().length > 0)
+        .map((value: string) => normalizeMessage(value))
+        .join("\n");
+
+      if (combined.trim()) return combined;
+    }
+
+    const direct = payload?.response ?? payload?.message ?? payload?.error;
+    if (typeof direct === "string" && direct.trim()) {
+      return normalizeMessage(direct);
+    }
+
+    if (payload?.raw && typeof payload.raw === "string") {
+      return payload.raw;
+    }
+
+    try {
+      const serialized = JSON.stringify(payload, null, 2);
+      if (serialized && serialized !== "{}") {
+        return serialized;
+      }
+    } catch {
+      // ignore stringify issues
+    }
+
+    return "I couldn't generate a response just yet.";
   };
 
   const parseSenderIs = (value: any): boolean | null => {
@@ -160,10 +209,6 @@ export const AiChatPanel = () => {
 
     try {
       const calendarId = selectedCalendarId;
-      if (!calendarId) {
-        addAssistantMessage("No calendar selected.");
-        return;
-      }
 
       let currentChatId = chatId || localStorage.getItem(CHAT_ID_KEY);
 
@@ -210,7 +255,7 @@ export const AiChatPanel = () => {
         console.log("sendMessageAPI data:", sendData);
       }
 
-      const aiResponse = await chatClient.askAI(trimmed, calendarId,chatId,  geolocation.lat, geolocation.lng);
+      const aiResponse = await chatClient.askAI(trimmed, calendarId ?? null, currentChatId ?? null, geolocation.lat, geolocation.lng);
 
       if (!aiResponse.ok) {
         addAssistantMessage("Failed to get AI response.");
@@ -221,14 +266,8 @@ export const AiChatPanel = () => {
       console.log("askAI data:", aiData);
       refreshEvents();
 
-    const assistantText = Array.isArray(aiData.results)
-      ? aiData.results
-          .map((item: any) => `• ${item.response ?? item.error ?? item.message}`)
-          .filter(Boolean)
-          .join("\n")
-      : String(aiData.response ?? aiData.message ?? aiData.error ?? "No response returned.");
-          
-        addAssistantMessage(assistantText);
+      const assistantText = getAssistantTextFromPayload(aiData);
+      addAssistantMessage(assistantText);
 
       if (currentChatId) {
         const saveAssistantResponse = await chatClient.sendMessageAPI(
@@ -319,7 +358,9 @@ export const AiChatPanel = () => {
               borderColor: message.role === "user" ? undefined : "divider",
             }}
           >
-            <Typography variant="body2">{message.text}</Typography>
+            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+              {message.text}
+            </Typography>
           </Box>
         ))}
 
@@ -384,7 +425,7 @@ export const AiChatPanel = () => {
             },
           }}
         >
-          {isRecording ? "⏹" : hasMicDraft ? "📨" : <MicIcon />}
+          {isRecording ? "⏹" : hasMicDraft ? "📨" : <Mic size={18} />}
         </Button>
       </Box>
     </Stack>

@@ -77,9 +77,13 @@ General rules:
 - If one action depends on an object created by a previous action, include an "action_id" on the earlier action and an "event_ref" on the later action.
 - Use ONLY these intent names:
   add_event
+  add_suggested_event
+  suggest_best_time
   update_event
   delete_event
   traffic_info
+  suggest_local_event
+  schedule_query
   chat
   clarify
   add_participant
@@ -101,11 +105,14 @@ Supported intent behavior:
   
 - traffic_info
 - ordinary conversation -> chat
+- add_suggested_event -> use this when the user refers to one of the previously suggested nearby places and wants it scheduled
+- suggest_best_time -> use this when the user wants help finding a good slot for an activity based on availability
 - update_event -> include the updated event details
 - delete_event -> include the event_id
 - add_participant -> include participant details
 - remove_participant
 - list_participants
+  - this can target a single event OR a date range like day, week, or month
 - get_participant_info
 - if the user refers to prior messages, use chat context to interpret intent, but do not include chat history in output
 - if intent cannot be determined, use unknown.
@@ -224,9 +231,51 @@ if intent = "remove_participant"{
     "participant_id": "uuid" 
 }
 
-if intent = "list_participants{ 
+if intent = "list_participants"{ 
     "intent": "list_participants", 
-    "event_id": "uuid" 
+    "event_id": "uuid or null",
+    "range_type": "event | day | week | month | null",
+    "target_date": "YYYY-MM-DD or null"
+}
+
+if intent == "suggest_local_event", include:
+{
+  "intent": "suggest_local_event",
+  "keyword": "string or null",
+  "target_date": "YYYY-MM-DD or null",
+  "time_hint": "morning | afternoon | evening | night | null",
+  "message": "short user-facing response"
+}
+
+if intent == "add_suggested_event", include:
+{
+  "intent": "add_suggested_event",
+  "selection": "first | second | third | fourth | fifth | last | exact title or null",
+  "title": "resolved title if obvious or null",
+  "start_time": "ISO8601 string or null",
+  "end_time": "ISO8601 string or null",
+  "duration_minutes": "integer or null",
+  "message": "short user-facing response"
+}
+
+if intent == "schedule_query", include:
+{
+  "intent": "schedule_query",
+  "query_type": "events | free_time | busiest_day",
+  "range_type": "day | week | month",
+  "target_date": "YYYY-MM-DD or null",
+  "message": "short optional user-facing response"
+}
+
+if intent == "suggest_best_time", include:
+{
+  "intent": "suggest_best_time",
+  "title": "activity title",
+  "range_type": "day | week | month",
+  "target_date": "YYYY-MM-DD or null",
+  "duration_minutes": 30,
+  "time_hint": "morning | afternoon | evening | night | weekend | null",
+  "message": "short optional user-facing response"
 }
 
 if intent = "get_participant_info"{ 
@@ -236,6 +285,8 @@ if intent = "get_participant_info"{
 
 Rules for clarify
 - Add in your message the information that needs clarification.
+- Prefer clarify instead of unknown when the user intent is understandable but missing required details.
+- For participant listing over a time period, if the user does not specify day/week/month but clearly wants a time-bounded list, ask which range they want.
 
 
 if intent == "clarify", include:
@@ -248,6 +299,33 @@ If unsure:
 {
   "intent": "unknown"
 }
+
+For list_participants:
+- If the user asks for everyone/participants attending events in a day, week, or month, use list_participants with range_type and target_date.
+- If they ask for participants for one specific named event, use list_participants with event_id when it can be resolved from calendar context.
+- If multiple events match and you cannot safely choose one, use clarify.
+
+For suggest_local_event:
+- Use this when the user asks for nearby activities, food, coffee, museums, music, or something fun to do nearby.
+- Do not use add_event unless the user is explicitly scheduling something.
+- This intent should only suggest, not create an event.
+
+For add_suggested_event:
+- Use this when the user refers to one of the previously suggested nearby places with phrases like "add the first one", "schedule the second option", or "put that one on my calendar".
+- Prefer selection values like first/second/third when the user refers to ordinal choices.
+- If the user has not provided enough time details, return clarify.
+
+For schedule_query:
+- Use this for requests like "what do I have tomorrow", "when am I free this week", and "what's my busiest day".
+- query_type=events for listing scheduled events.
+- query_type=free_time for finding openings.
+- query_type=busiest_day for comparing day load within the requested range.
+
+For suggest_best_time:
+- Use this for requests like "find the best time this week for a 2-hour workout", "when should I do laundry", or "fit coffee with Alex into my week".
+- Prefer this intent over add_event when the user is asking for a recommendation rather than directly scheduling.
+- Infer duration_minutes when the user clearly gives one, otherwise use a reasonable default like 60.
+- Use time_hint for phrases like morning, afternoon, evening, night, or weekend.
 
 Respond ONLY with valid JSON.
 """.strip()

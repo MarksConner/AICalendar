@@ -161,7 +161,7 @@ export const buildPositionedEvents = (
 // Builds an time object to send context.
 export const buildUserTimezoneAndTimeObject = () =>{
   const now = new Date()
-  const user_current_datetime = now.toString()
+  const user_current_datetime = now.toISOString()
   const user_timezone = Intl.DateTimeFormat().resolvedOptions().timeZone //Pulls the timezone the user is currently in 
   const user_current_minutes =  now.getHours() * 60 + now.getMinutes() // Gives context on where is the user in the day in minutes.
   return {user_current_datetime, user_timezone, user_current_minutes};

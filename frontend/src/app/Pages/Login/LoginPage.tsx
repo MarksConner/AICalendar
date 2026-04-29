@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -15,10 +14,14 @@ import {
 } from "../../design_system/components/ui/Card";
 import { Button } from "../../design_system/components/ui/Button";
 import { Input } from "../../design_system/components/ui/Input";
+import { useEffect, useState } from "react";
 import LoginClient  from "../../api_client/Auth";
 import { createAppTheme } from "../../muiTheme";
+import { consumeSessionTimeoutMessage } from "../../services/auth/sessionTimeout";
 
 const lightTheme = createAppTheme("light");
+
+export const LoginPage = () => {
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -27,6 +30,13 @@ export const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timeoutMessage = consumeSessionTimeoutMessage();
+    if (timeoutMessage) {
+      setError(timeoutMessage);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

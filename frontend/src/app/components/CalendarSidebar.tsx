@@ -5,7 +5,7 @@ import Divider from "@mui/material/Divider";
 import ListItemButton from "@mui/material/ListItemButton";
 import Typography from "@mui/material/Typography";
 import { useMatch, useResolvedPath, NavLink } from "react-router-dom";
-import { Plus, Trash2 } from "lucide-react";
+import { Download, Plus, Trash2 } from "lucide-react";
 import { MiniMonth } from "./MiniMonth";
 import { useCalendar } from "../contexts/CalendarContext";
 import {
@@ -16,7 +16,6 @@ import {
 import { Button } from "../design_system/components/ui/Button";
 import IconButton from "@mui/material/IconButton";
 import CalendarClient from "../api_client/CalendarClient";
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 type BackendCalendar = {
   calendar_id: string;
@@ -223,7 +222,7 @@ export const CalendarSidebar = () => {
                     }}
                     size="sm"
                     variant="ghost"
-                    startIcon={<FileDownloadIcon />}
+                    startIcon={<Download size={16} />}
                     onClick={async () => {
                       if (!calendar.calendar_id) return;
                       const calendarClient = new CalendarClient();

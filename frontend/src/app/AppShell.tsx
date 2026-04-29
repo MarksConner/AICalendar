@@ -17,6 +17,8 @@ import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { clearAuthStorage } from "./services/auth/sessionTimeout";
+import { tryRefreshAccessToken } from "./services/adapters/http/httpClient";
 import { Button } from "./design_system/components/ui/Button";
 import { SidePanel } from "./design_system/components/ui/SidePanel";
 import { CalendarSidebar } from "./components/CalendarSidebar";
@@ -170,6 +172,33 @@ export function AppShell() {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, selectedDate, selectedView, setSearchParams]);
 
+  useEffect(() => {
+    const refreshOnReturn = () => {
+      const refreshToken = localStorage.getItem("refresh_token");
+      const accessToken = localStorage.getItem("access_token");
+
+      if (!refreshToken || !accessToken) {
+        return;
+      }
+
+      void tryRefreshAccessToken();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshOnReturn();
+      }
+    };
+
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
   const updateCalendarParams = useCallback(
     (updates: { date?: Date; view?: CalendarView }) => {
       setSearchParams((prev) => {
@@ -230,11 +259,7 @@ export function AppShell() {
   const handleCloseMenu = () => setMenuAnchor(null);
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("user_id");
-    localStorage.removeItem("calendar_id");
-    localStorage.removeItem("chat_id");
-    localStorage.removeItem("chat_messages");
+    clearAuthStorage();
     setSelectedCalendarId(null);
     navigate("/", { replace: true });
   };

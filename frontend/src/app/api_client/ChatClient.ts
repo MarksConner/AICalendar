@@ -1,4 +1,5 @@
 import { buildUserTimezoneAndTimeObject } from "../Pages/TodaysPlan/dayPlannerUtils";
+import { handleSessionTimeout } from "../services/auth/sessionTimeout";
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
 type RequestOptions = {
@@ -19,7 +20,7 @@ export default class ChatClient {
   async request(options: RequestOptions): Promise<Response> {
     const token = localStorage.getItem("access_token");
 
-    return fetch(this.base_url + options.url, {
+    const response = await fetch(this.base_url + options.url, {
       method: options.method,
       headers: {
         "Content-Type": "application/json",
@@ -28,6 +29,12 @@ export default class ChatClient {
       },
       body: options.body ? JSON.stringify(options.body) : null,
     });
+
+    if (response.status === 401) {
+      handleSessionTimeout();
+    }
+
+    return response;
   }
 
   async createChatAPI(content: string): Promise<Response> {
@@ -57,7 +64,7 @@ export default class ChatClient {
   });
 }
 
-  async askAI(message: string, calendar_id: string, chat_id: string,   user_latitude?: number | null, user_longitude?: number | null): Promise<Response> {
+  async askAI(message: string, calendar_id: string | null, chat_id: string | null,   user_latitude?: number | null, user_longitude?: number | null): Promise<Response> {
     return this.request({
       method: "POST",
       url: "/chat",
