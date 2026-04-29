@@ -22,8 +22,6 @@ import { consumeSessionTimeoutMessage } from "../../services/auth/sessionTimeout
 const lightTheme = createAppTheme("light");
 
 export const LoginPage = () => {
-
-export const LoginPage = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
