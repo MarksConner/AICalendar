@@ -1,5 +1,6 @@
 import { buildUserTimezoneAndTimeObject } from "../Pages/TodaysPlan/dayPlannerUtils";
 import { handleSessionTimeout } from "../services/auth/sessionTimeout";
+import type { CalendarView } from "../contexts/calendarState";
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
 type RequestOptions = {
@@ -64,11 +65,11 @@ export default class ChatClient {
   });
 }
 
-  async askAI(message: string, calendar_id: string | null, chat_id: string | null,   user_latitude?: number | null, user_longitude?: number | null): Promise<Response> {
+  async askAI(message: string, calendar_id: string | null, chat_id: string | null, user_latitude?: number | null, user_longitude?: number | null, selectedDate?: Date | null, selectedView?: CalendarView | null): Promise<Response> {
     return this.request({
       method: "POST",
       url: "/chat",
-      body: { message, calendar_id, chat_id, current_time: buildUserTimezoneAndTimeObject(), user_latitude, user_longitude, },
+      body: { message, calendar_id, chat_id, current_time: buildUserTimezoneAndTimeObject(selectedDate, selectedView), user_latitude, user_longitude },
     });
   }
 }

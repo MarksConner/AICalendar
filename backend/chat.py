@@ -29,6 +29,8 @@ def get_db():
 
 router = APIRouter()
 schedule = Schedule()
+RECENT_SUGGESTIONS_BY_CHAT: dict[str, list[dict]] = {}
+PENDING_BULK_REQUESTS_BY_CHAT: dict[str, dict[str, Any]] = {}
 
 class UserMessage(BaseModel):
     message: str
@@ -150,10 +152,7 @@ def _event_start(event: dict) -> datetime | None:
         return None
 
 
-def _resolve_suggestion_selection(selection: str | None, chat_context: list[dict] | None):
-    if not chat_context:
-        return None
-
+def _resolve_suggestion_selection(selection: str | None, chat_context: list[dict] | None, recent_suggestions: list[dict] | None = None):
     normalized = (selection or "").strip().lower()
     ordinal_map = {
         "first": 0,
@@ -174,19 +173,25 @@ def _resolve_suggestion_selection(selection: str | None, chat_context: list[dict
         "last": -1,
     }
 
-    for message in reversed(chat_context):
-        content = message.get("content")
-        if not content:
-            continue
-        try:
-            payload = json.loads(content)
-        except Exception:
-            continue
+    suggestion_sets: list[list[dict]] = []
+    if isinstance(recent_suggestions, list) and recent_suggestions:
+        suggestion_sets.append(recent_suggestions)
 
-        suggestions = payload.get("suggestions")
-        if not isinstance(suggestions, list) or not suggestions:
-            continue
+    if chat_context:
+        for message in reversed(chat_context):
+            content = message.get("content")
+            if not content:
+                continue
+            try:
+                payload = json.loads(content)
+            except Exception:
+                continue
 
+            suggestions = payload.get("suggestions")
+            if isinstance(suggestions, list) and suggestions:
+                suggestion_sets.append(suggestions)
+
+    for suggestions in suggestion_sets:
         if normalized in ordinal_map:
             index = ordinal_map[normalized]
             if index == -1:
@@ -200,9 +205,178 @@ def _resolve_suggestion_selection(selection: str | None, chat_context: list[dict
                 if title == normalized or normalized in title:
                     return suggestion
 
-        return suggestions[0]
+    return None
+
+
+def _selection_from_message(message: str | None) -> str | None:
+    normalized = (message or "").lower()
+    mapping = {
+        "1": "first",
+        "one": "first",
+        "first": "first",
+        "2": "second",
+        "two": "second",
+        "second": "second",
+        "3": "third",
+        "three": "third",
+        "third": "third",
+        "4": "fourth",
+        "four": "fourth",
+        "fourth": "fourth",
+        "5": "fifth",
+        "five": "fifth",
+        "fifth": "fifth",
+        "last": "last",
+    }
+    for token, selection in mapping.items():
+        if f"#{token}" in normalized:
+            return selection
+        if f"number {token}" in normalized:
+            return selection
+        if f"option {token}" in normalized:
+            return selection
+        if f"add {token}" in normalized:
+            return selection
+        if f"schedule {token}" in normalized:
+            return selection
+        if f"can you add {token}" in normalized:
+            return selection
+        if f"the {token} one" in normalized:
+            return selection
+        if f"that {token} one" in normalized:
+            return selection
+        if f" {token} " in f" {normalized} ":
+            return selection
+    return None
+
+
+def _looks_like_suggestion_add_request(message: str | None) -> bool:
+    normalized = (message or "").lower()
+    if not normalized:
+        return False
+    selection = _selection_from_message(normalized)
+    if not selection:
+        return False
+    return any(phrase in normalized for phrase in ["add", "schedule", "calendar", "put"])
+
+
+def _is_bulk_consecutive_request(message: str | None) -> bool:
+    normalized = (message or "").lower()
+    if not normalized:
+        return False
+    bulk_words = [" consecutive", " back to back", " back-to-back", " in a row"]
+    digit_match = any(f" {n} " in f" {normalized} " for n in ["2", "3", "4", "5", "6", "7", "8", "9", "10"])
+    word_match = any(word in normalized for word in ["two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"])
+    plural_event_hint = "events" in normalized
+    return (any(word in normalized for word in bulk_words) or plural_event_hint) and (digit_match or word_match)
+
+
+def _message_has_explicit_clock_time(message: str | None) -> bool:
+    normalized = (message or "").lower()
+    if not normalized:
+        return False
+    import re
+    return bool(re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(am|pm)\b", normalized) or re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", normalized))
+
+
+def _parse_inline_time_details(message: str | None, current_time: dict | None = None) -> dict[str, Any]:
+    normalized = (message or "").lower()
+    reference = _coerce_datetime((current_time or {}).get("user_current_datetime")) or datetime.now()
+    reference = reference.replace(tzinfo=None)
+
+    target_date = reference.date()
+    if "day after tomorrow" in normalized:
+        target_date = reference.date() + timedelta(days=2)
+    elif "tomorrow" in normalized:
+        target_date = reference.date() + timedelta(days=1)
+    elif "today" in normalized:
+        target_date = reference.date()
+
+    hour = None
+    minute = 0
+
+    import re
+    match = re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(am|pm)\b", normalized)
+    if match:
+        hour = int(match.group(1))
+        minute = int(match.group(2) or 0)
+        meridiem = match.group(3)
+        if meridiem == "pm" and hour != 12:
+            hour += 12
+        if meridiem == "am" and hour == 12:
+            hour = 0
+    else:
+        match24 = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", normalized)
+        if match24:
+            hour = int(match24.group(1))
+            minute = int(match24.group(2))
+
+    if hour is None:
+        if "morning" in normalized:
+            hour = 9
+        elif "afternoon" in normalized:
+            hour = 13
+        elif "evening" in normalized or "night" in normalized:
+            hour = 18
+
+    if hour is None:
+        return {"start_time": None, "end_time": None, "duration_minutes": 60}
+
+    start_dt = datetime.combine(target_date, datetime.min.time()).replace(hour=hour, minute=minute)
+    end_dt = start_dt + timedelta(minutes=60)
+    return {
+        "start_time": start_dt.isoformat(),
+        "end_time": end_dt.isoformat(),
+        "duration_minutes": 60,
+    }
+
+
+def _latest_suggestion_from_chat_context(chat_context: list[dict] | None):
+    if not chat_context:
+        return None
+
+    for message in reversed(chat_context):
+        content = message.get("content")
+        if not content:
+            continue
+        try:
+            payload = json.loads(content)
+        except Exception:
+            continue
+
+        suggestion = payload.get("suggestion")
+        if isinstance(suggestion, dict) and suggestion.get("title"):
+            return suggestion
+
+        suggestions = payload.get("suggestions")
+        if isinstance(suggestions, list) and suggestions:
+            first = suggestions[0]
+            if isinstance(first, dict):
+                return first
 
     return None
+
+
+def _is_followup_to_local_suggestion(message: str | None, chat_context: list[dict] | None) -> bool:
+    normalized = (message or "").lower()
+    if any(token in normalized for token in ["first one", "second one", "third one", "fourth one", "fifth one", "last one", "museum", "coffee", "restaurant", "bar", "park"]):
+        return True
+
+    if not chat_context:
+        return False
+
+    for message_item in reversed(chat_context[-6:]):
+        content = message_item.get("content")
+        if not content:
+            continue
+        try:
+            payload = json.loads(content)
+        except Exception:
+            continue
+        if payload.get("action") == "suggest_local_event" or payload.get("suggestion") or payload.get("suggestions"):
+            return True
+
+    return False
 
 
 def _format_event_line(event: dict) -> str:
@@ -330,6 +504,7 @@ def _build_best_time_suggestion(calendar_context: dict | None, title: str | None
             if now_dt:
                 break
     if now_dt:
+        now_dt = now_dt.replace(tzinfo=None)
         range_start = max(range_start, now_dt)
     preferred_windows = _time_hint_windows(effective_time_hint, range_start, range_end)
 
@@ -524,26 +699,98 @@ def chat(data: UserMessage):
         calendar_context = get_calendar_context(read_db, data.calendar_id) if data.calendar_id else None
         chat_context = get_chat_context(read_db, data.chat_id) if data.chat_id else None
 
+    forced_actions = None
+    if _is_bulk_consecutive_request(data.message) and not _message_has_explicit_clock_time(data.message):
+        if data.chat_id:
+            PENDING_BULK_REQUESTS_BY_CHAT[str(data.chat_id)] = {
+                "message": data.message,
+                "current_time": data.current_time,
+            }
+        forced_actions = [{
+            "intent": "clarify",
+            "message": "I can create those events, but I need a start time so I don't schedule them overnight. What time should the first one start?",
+        }]
+    elif data.chat_id and str(data.chat_id) in PENDING_BULK_REQUESTS_BY_CHAT and _message_has_explicit_clock_time(data.message):
+        pending = PENDING_BULK_REQUESTS_BY_CHAT.pop(str(data.chat_id))
+        original_message = pending.get("message") or ""
+        import re
+        count_match = re.search(r"\b(\d+)\b", original_message)
+        count = int(count_match.group(1)) if count_match else 1
+        title_match = re.search(r"called\s+(.+)$", original_message, re.IGNORECASE)
+        title = title_match.group(1).strip() if title_match else "Untitled Event"
+        parsed = _parse_inline_time_details(data.message, data.current_time or pending.get("current_time"))
+        start_time = parsed.get("start_time")
+        duration = int(parsed.get("duration_minutes") or 60)
+        actions = []
+        if start_time:
+            base_start = Schedule.parse_datetime(start_time)
+            for index in range(count):
+                start_dt = base_start + timedelta(minutes=duration * index)
+                end_dt = start_dt + timedelta(minutes=duration)
+                actions.append({
+                    "intent": "add_event",
+                    "title": title,
+                    "start_time": start_dt.isoformat(),
+                    "end_time": end_dt.isoformat(),
+                    "duration_minutes": duration,
+                    "location": None,
+                    "priority_rank": 0,
+                    "recurring": False,
+                })
+            forced_actions = actions
+        else:
+            forced_actions = [{
+                "intent": "clarify",
+                "message": "I still need a specific start time like 2am or 10:30am for the first event.",
+            }]
+    elif _is_followup_to_local_suggestion(data.message, chat_context) and _looks_like_suggestion_add_request(data.message):
+        forced_actions = [{
+            "intent": "add_suggested_event",
+            "selection": _selection_from_message(data.message),
+            **_parse_inline_time_details(data.message, data.current_time),
+        }]
+
     # no DB session held during LLM call
-    llm_output = ask_llm(data.message,calendar_context=calendar_context,chat_context=chat_context, current_time = data.current_time)
+    llm_output = None if forced_actions is not None else ask_llm(data.message,calendar_context=calendar_context,chat_context=chat_context, current_time = data.current_time)
     print("RAW LLM OUTPUT:", llm_output, flush=True)
 
-    if not llm_output:
-        return {"error": "LLM returned an empty response"}
+    if forced_actions is not None:
+        actions = forced_actions
+    else:
+        if not llm_output:
+            return {"error": "LLM returned an empty response"}
 
-    lowered_output = llm_output.lower()
-    if any(marker in lowered_output for marker in ["openai_api_key is not set", "insufficient_quota", "quota", "rate limit", "429"]):
-        return {
-            "response": "AI scheduling is temporarily unavailable right now. Please check the OpenAI key or billing setup and try again.",
-            "action": "chat"
-        }
+    if forced_actions is None:
+        lowered_output = llm_output.lower()
+        if any(marker in lowered_output for marker in ["openai_api_key is not set", "insufficient_quota", "quota", "rate limit", "429"]):
+            return {
+                "response": "AI scheduling is temporarily unavailable right now. Please check the OpenAI key or billing setup and try again.",
+                "action": "chat"
+            }
 
-    try:
-        action = json.loads(llm_output)
-    except Exception as e:
-        return {"error": f"Invalid JSON from LLM: {e}", "raw": llm_output}
+        try:
+            action = json.loads(llm_output)
+        except Exception as e:
+            return {"error": f"Invalid JSON from LLM: {e}", "raw": llm_output}
 
-    actions = action.get("actions", [action])
+        if action.get("intent") == "multiple":
+            raw_results = action.get("results")
+            if isinstance(raw_results, list) and raw_results:
+                actions = raw_results
+            elif _is_followup_to_local_suggestion(data.message, chat_context):
+                actions = [{
+                    "intent": "add_suggested_event",
+                    "selection": _selection_from_message(data.message),
+                    "start_time": None,
+                    "end_time": None,
+                    "duration_minutes": 60,
+                    "message": "I need a little clarification before I add that suggestion."
+                }]
+            else:
+                return {"response": "I understood the request, but I couldn't parse the action cleanly. Please try again with something like 'add the second one tomorrow at 8am'.", "action": "clarify"}
+        else:
+            actions = action.get("actions", [action])
+
     if not isinstance(actions, list):
         return {"error": "LLM output must contain an actions list."}
 
@@ -573,6 +820,12 @@ def chat(data: UserMessage):
             elif intent == "add_event":
                 title = action.get("title", "Untitled Event")
                 location = action.get("location")
+                if not location and _is_followup_to_local_suggestion(data.message, chat_context):
+                    latest_suggestion = _latest_suggestion_from_chat_context(chat_context)
+                    if latest_suggestion:
+                        location = latest_suggestion.get("address") or latest_suggestion.get("venue_name") or location
+                        if title == "Untitled Event" or title == action.get("title"):
+                            title = latest_suggestion.get("title") or title
                 duration = int(action.get("duration_minutes") or 60)
                 priority = action.get("priority_rank", 0)
                 recurring = bool(action.get("recurring"))
@@ -670,6 +923,9 @@ def chat(data: UserMessage):
                 except ConflictError as e:
                     session.rollback()
                     results.append({"error": str(e)})
+                except ValueError as e:
+                    session.rollback()
+                    results.append({"error": str(e)})
 
             
             elif intent == "suggest_local_event":
@@ -707,6 +963,9 @@ def chat(data: UserMessage):
                         lines.append(f"{index}. {title}\n   {address}")
                         normalized_suggestions.append(suggestion_data)
 
+                    if data.chat_id:
+                        RECENT_SUGGESTIONS_BY_CHAT[str(data.chat_id)] = normalized_suggestions
+
                     results.append({
                         "response": f"Here are some nearby {keyword} suggestions:\n\n" + "\n\n".join(lines),
                         "action": "suggest_local_event",
@@ -723,7 +982,11 @@ def chat(data: UserMessage):
                     continue
 
                 selection = action.get("selection") or action.get("title")
-                selected_suggestion = _resolve_suggestion_selection(selection, chat_context)
+                selected_suggestion = _resolve_suggestion_selection(
+                    selection,
+                    chat_context,
+                    RECENT_SUGGESTIONS_BY_CHAT.get(str(data.chat_id)) if data.chat_id else None,
+                )
                 if not selected_suggestion:
                     results.append({
                         "response": "I couldn't tell which nearby suggestion you wanted. Try saying add the first one or add the second one.",
@@ -734,6 +997,15 @@ def chat(data: UserMessage):
                 start = action.get("start_time")
                 end = action.get("end_time")
                 duration = int(action.get("duration_minutes") or 60)
+
+                normalized_message = (data.message or "").lower()
+                if any(phrase in normalized_message for phrase in ["today", "tomorrow", "day after tomorrow", "morning", "afternoon", "evening", "night"]):
+                    parsed_time = _parse_inline_time_details(data.message, data.current_time)
+                    if parsed_time.get("start_time"):
+                        start = parsed_time.get("start_time")
+                        end = parsed_time.get("end_time")
+                        duration = int(parsed_time.get("duration_minutes") or duration)
+
                 if not start:
                     results.append({
                         "response": "I found the suggestion, but I still need a date and time to add it to your calendar.",
@@ -767,6 +1039,9 @@ def chat(data: UserMessage):
                         "suggestion": selected_suggestion,
                     })
                 except ConflictError as e:
+                    session.rollback()
+                    results.append({"error": str(e)})
+                except ValueError as e:
                     session.rollback()
                     results.append({"error": str(e)})
                 except Exception as e:

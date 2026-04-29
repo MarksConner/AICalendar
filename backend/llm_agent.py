@@ -25,7 +25,9 @@ def ask_llm(message: str, * ,calendar_context: Optional[Dict[str, Any]] = None, 
         current_time_text = (
             f"User local datetime: {current_time.get('user_current_datetime')}. "
             f"User timezone: {current_time.get('user_timezone')}. "
-            f"User current minutes after midnight: {current_time.get('user_current_minutes')}."
+            f"User current minutes after midnight: {current_time.get('user_current_minutes')}. "
+            f"Selected planner date in UI: {current_time.get('selected_planner_date')}. "
+            f"Selected planner view in UI: {current_time.get('selected_planner_view')}."
         )
     else:
         current_time_text = "User local time was not provided."
@@ -69,12 +71,17 @@ Even if there is only one action, still return it inside the "actions" array.
 
 General rules:
 - When user uses time referential words such as "today, tomorrow, in 3 days" use the user current time to derive the correct time.
+- Do NOT reinterpret "today" or "tomorrow" relative to the selected planner date shown in the UI unless the user explicitly says the selected day, this day, or the day I'm viewing.
+- The selected planner date/view is only extra UI context, not a replacement for the user's real current date.
 - Preserve execution order.
 - Do not drop actions.
 - Do not merge unrelated actions into one intent.
 - Use one action object per operation.
 - If later actions depend on earlier ones, place them after the dependency.
 - If one action depends on an object created by a previous action, include an "action_id" on the earlier action and an "event_ref" on the later action.
+- NEVER return `intent: "multiple"`.
+- NEVER return a top-level `results` array.
+- ALWAYS return a top-level `actions` array, even for one action.
 - Use ONLY these intent names:
   add_event
   add_suggested_event
@@ -312,7 +319,8 @@ For suggest_local_event:
 
 For add_suggested_event:
 - Use this when the user refers to one of the previously suggested nearby places with phrases like "add the first one", "schedule the second option", or "put that one on my calendar".
-- Prefer selection values like first/second/third when the user refers to ordinal choices.
+- Also use this for compact ordinal phrasing like "add 2 to my schedule for 8am tomorrow", "schedule #3 tomorrow morning", "put number 2 on my calendar at 10pm", or "can you add two".
+- Prefer selection values like first/second/third when the user refers to ordinal choices, and convert bare numbers like 1/2/3 or words like one/two/three into first/second/third.
 - If the user has not provided enough time details, return clarify.
 
 For schedule_query:

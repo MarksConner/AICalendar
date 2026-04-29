@@ -42,7 +42,7 @@ export const AiChatPanel = () => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicDraft, setHasMicDraft] = useState(false);
-  const {selectedCalendarId, refreshEvents} = useCalendar();
+  const {selectedCalendarId, selectedDate, selectedView, refreshEvents} = useCalendar();
   const geolocation = useGeolocation(true);
 
   const chatClient = useMemo(() => new ChatClient(), []);
@@ -154,6 +154,12 @@ export const AiChatPanel = () => {
     loadPreviousMessages(savedChatId);
   }, []);
 
+  useEffect(() => {
+    setChatId(null);
+    localStorage.removeItem(CHAT_ID_KEY);
+    resetToWelcome();
+  }, [selectedCalendarId]);
+
   async function loadPreviousMessages(existingChatId: string) {
     setIsHistoryLoading(true);
 
@@ -208,7 +214,8 @@ export const AiChatPanel = () => {
     setIsLoading(true);
 
     try {
-      const calendarId = selectedCalendarId;
+      const calendarId = selectedCalendarId ?? localStorage.getItem("calendar_id");
+      console.log("AiChatPanel calendarId for askAI:", calendarId);
 
       let currentChatId = chatId || localStorage.getItem(CHAT_ID_KEY);
 
@@ -216,7 +223,14 @@ export const AiChatPanel = () => {
         const createResponse = await chatClient.createChatAPI(trimmed);
 
         if (!createResponse.ok) {
-          addAssistantMessage("Failed to create chat.");
+          let details = "Failed to create chat.";
+          try {
+            const errorData = await createResponse.json();
+            details = getAssistantTextFromPayload(errorData) || details;
+          } catch {
+            // ignore parse issues
+          }
+          addAssistantMessage(details);
           return;
         }
 
@@ -247,7 +261,14 @@ export const AiChatPanel = () => {
         );
 
         if (!sendResponse.ok) {
-          addAssistantMessage("Failed to send message.");
+          let details = "Failed to send message.";
+          try {
+            const errorData = await sendResponse.json();
+            details = getAssistantTextFromPayload(errorData) || details;
+          } catch {
+            // ignore parse issues
+          }
+          addAssistantMessage(details);
           return;
         }
 
@@ -255,10 +276,17 @@ export const AiChatPanel = () => {
         console.log("sendMessageAPI data:", sendData);
       }
 
-      const aiResponse = await chatClient.askAI(trimmed, calendarId ?? null, currentChatId ?? null, geolocation.lat, geolocation.lng);
+      const aiResponse = await chatClient.askAI(trimmed, calendarId ?? null, currentChatId ?? null, geolocation.lat, geolocation.lng, selectedDate, selectedView);
 
       if (!aiResponse.ok) {
-        addAssistantMessage("Failed to get AI response.");
+        let details = "Failed to get AI response.";
+        try {
+          const errorData = await aiResponse.json();
+          details = getAssistantTextFromPayload(errorData) || details;
+        } catch {
+          // ignore parse issues
+        }
+        addAssistantMessage(details);
         return;
       }
 
@@ -282,7 +310,8 @@ export const AiChatPanel = () => {
       }
     } catch (error) {
       console.error(error);
-      addAssistantMessage("Something went wrong while sending the message.");
+      const details = error instanceof Error ? error.message : "Something went wrong while sending the message.";
+      addAssistantMessage(details || "Something went wrong while sending the message.");
     } finally {
       setIsLoading(false);
     }
