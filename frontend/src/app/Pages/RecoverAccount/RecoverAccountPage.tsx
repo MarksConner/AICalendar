@@ -46,7 +46,7 @@ export const RecoverAccountPage = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 45%, #7b2ff7 100%)",
+        background: "linear-gradient(155deg, #1252c8 0%, #7e97d6 45%, #6218d9 100%)",
         px: 2,
         position: "relative",
         overflow: "hidden",

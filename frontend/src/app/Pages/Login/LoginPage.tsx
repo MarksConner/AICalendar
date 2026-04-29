@@ -68,7 +68,7 @@ export const LoginPage = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 45%, #7b2ff7 100%)",
+        background: "linear-gradient(145deg, #1252c8 0%, #7e97d6 45%, #7c2ff7c8 100%)",
         px: 2,
         position: "relative",
         overflow: "hidden",

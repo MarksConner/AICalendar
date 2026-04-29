@@ -1,10 +1,16 @@
 import { Outlet, useNavigate, useSearchParams } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
+import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import ButtonGroup from "@mui/material/ButtonGroup";
+import Divider from "@mui/material/Divider";
 import Fab from "@mui/material/Fab";
 import IconButton from "@mui/material/IconButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Switch from "@mui/material/Switch";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Toolbar from "@mui/material/Toolbar";
@@ -16,12 +22,15 @@ import { SidePanel } from "./design_system/components/ui/SidePanel";
 import { CalendarSidebar } from "./components/CalendarSidebar";
 import { LocalEventsPanel } from "./Pages/TodaysPlan/LocalEventsPanel";
 import { CalendarProvider } from "./contexts/CalendarContext";
+import { useThemeMode } from "./contexts/ThemeContext";
 import type { CalendarView } from "./contexts/calendarState";
 import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  LogOut,
   MessageCircle,
+  Moon,
 } from "lucide-react";
 
 const calendarViewOptions: Array<{ value: CalendarView; label: string }> = [
@@ -211,11 +220,24 @@ export function AppShell() {
   const handleNext = () =>
     setSelectedDate(shiftDateByView(selectedDate, selectedView, 1));
 
-  const handleLogout = () => {localStorage.removeItem("access_token");localStorage.removeItem("user_id");localStorage.removeItem("calendar_id");localStorage.removeItem("chat_id");
-  localStorage.removeItem("chat_messages");
-  setSelectedCalendarId(null);
-  navigate("/", { replace: true });
-};
+  const { mode, toggleMode } = useThemeMode();
+  const userId = localStorage.getItem("user_id") ?? "Unknown user";
+  const userInitial = userId.charAt(0).toUpperCase();
+
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const isMenuOpen = Boolean(menuAnchor);
+  const handleOpenMenu = (e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget);
+  const handleCloseMenu = () => setMenuAnchor(null);
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("calendar_id");
+    localStorage.removeItem("chat_id");
+    localStorage.removeItem("chat_messages");
+    setSelectedCalendarId(null);
+    navigate("/", { replace: true });
+  };
 
 
   const handleSetSelectedCalendarId = useCallback((id: string | null) => {
@@ -363,9 +385,45 @@ export function AppShell() {
                   Local events
                 </Button>
               </ButtonGroup>
-              <Button size="sm" variant="secondary" onClick={handleLogout}>
-                Log out
-              </Button>
+              <Tooltip title="Account">
+                <IconButton onClick={handleOpenMenu} size="small">
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main", fontSize: "0.875rem" }}>
+                    {userInitial}
+                  </Avatar>
+                </IconButton>
+              </Tooltip>
+
+              <Menu
+                anchorEl={menuAnchor}
+                open={isMenuOpen}
+                onClose={handleCloseMenu}
+                transformOrigin={{ horizontal: "right", vertical: "top" }}
+                anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+                slotProps={{ paper: { sx: { mt: 1, minWidth: 220 } } }}
+              >
+                {/* User info */}
+                <Box sx={{ px: 2, py: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">Signed in as</Typography>
+                  <Typography variant="body2" fontWeight={600} noWrap>{userId}</Typography>
+                </Box>
+
+                <Divider />
+
+                {/* Dark mode toggle */}
+                <MenuItem onClick={toggleMode} disableRipple>
+                  <ListItemIcon><Moon size={16} /></ListItemIcon>
+                  <Typography variant="body2" sx={{ flex: 1 }}>Dark mode</Typography>
+                  <Switch size="small" checked={mode === "dark"} onChange={toggleMode} onClick={(e) => e.stopPropagation()} />
+                </MenuItem>
+
+                <Divider />
+
+                {/* Log out */}
+                <MenuItem onClick={() => { handleCloseMenu(); handleLogout(); }}>
+                  <ListItemIcon><LogOut size={16} /></ListItemIcon>
+                  <Typography variant="body2">Log out</Typography>
+                </MenuItem>
+              </Menu>
             </Box>
           </Toolbar>
         </AppBar>

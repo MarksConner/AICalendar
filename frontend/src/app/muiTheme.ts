@@ -1,6 +1,7 @@
 import { createTheme } from "@mui/material/styles";
+import type { PaletteMode } from "@mui/material";
 
-const paletteColors = {
+const lightColors = {
   bg: "#f3f4f6",
   surface: "#ffffff",
   text: "#0f172a",
@@ -11,95 +12,112 @@ const paletteColors = {
   danger: "#ef4444",
 };
 
-export const muiTheme = createTheme({
-  palette: {
-    mode: "light",
-    primary: {
-      main: paletteColors.primary,
-      contrastText: paletteColors.primaryForeground,
+const darkColors = {
+  bg: "#0f172a",
+  surface: "#1e293b",
+  text: "#f1f5f9",
+  muted: "#94a3b8",
+  border: "#334155",
+  primary: "#5a85e2",
+  primaryForeground: "#ffffff",
+  danger: "#ef4444",
+};
+
+export function createAppTheme(mode: PaletteMode) {
+  const c = mode === "light" ? lightColors : darkColors;
+
+  return createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: c.primary,
+        contrastText: c.primaryForeground,
+      },
+      background: {
+        default: c.bg,
+        paper: c.surface,
+      },
+      text: {
+        primary: c.text,
+        secondary: c.muted,
+      },
+      error: {
+        main: c.danger,
+      },
+      divider: c.border,
     },
-    background: {
-      default: paletteColors.bg,
-      paper: paletteColors.surface,
-    },
-    text: {
-      primary: paletteColors.text,
-      secondary: paletteColors.muted,
-    },
-    error: {
-      main: paletteColors.danger,
-    },
-    divider: paletteColors.border,
-  },
-  typography: {
-    fontFamily:
-      'system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif',
-    button: {
-      textTransform: "none",
-      fontWeight: 600,
-    },
-  },
-  shape: {
-    borderRadius: 8,
-  },
-  components: {
-    MuiButton: {
-      defaultProps: {
-        disableElevation: true,
+    typography: {
+      fontFamily:
+        'system-ui, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif',
+      button: {
+        textTransform: "none",
+        fontWeight: 600,
       },
     },
-    MuiTextField: {
-      defaultProps: {
-        variant: "outlined",
-        size: "small",
-        fullWidth: true,
-        InputLabelProps: { shrink: true },
-      },
+    shape: {
+      borderRadius: 8,
     },
-    MuiOutlinedInput: {
-      styleOverrides: {
-        root: {
-          backgroundColor: paletteColors.surface,
-          "& .MuiOutlinedInput-notchedOutline": {
-            borderColor: paletteColors.border,
+    components: {
+      MuiButton: {
+        defaultProps: {
+          disableElevation: true,
+        },
+      },
+      MuiTextField: {
+        defaultProps: {
+          variant: "outlined",
+          size: "small",
+          fullWidth: true,
+          InputLabelProps: { shrink: true },
+        },
+      },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            backgroundColor: c.surface,
+            "& .MuiOutlinedInput-notchedOutline": {
+              borderColor: c.border,
+            },
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: c.text,
+            },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: c.primary,
+            },
           },
-          "&:hover .MuiOutlinedInput-notchedOutline": {
-            borderColor: paletteColors.text,
+        },
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            fontSize: "0.75rem",
+            color: c.muted,
+            "&.Mui-focused": {
+              color: c.text,
+            },
           },
-          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-            borderColor: paletteColors.primary,
+        },
+      },
+      MuiInputBase: {
+        styleOverrides: {
+          input: {
+            "&::placeholder": {
+              color: c.muted,
+              opacity: 1,
+            },
+          },
+        },
+      },
+      MuiFormHelperText: {
+        styleOverrides: {
+          root: {
+            marginLeft: 1,
+            fontSize: "0.75rem",
           },
         },
       },
     },
-    MuiInputLabel: {
-      styleOverrides: {
-        root: {
-          fontSize: "0.75rem",
-          color: paletteColors.muted,
-          "&.Mui-focused": {
-            color: paletteColors.text,
-          },
-        },
-      },
-    },
-    MuiInputBase: {
-      styleOverrides: {
-        input: {
-          "&::placeholder": {
-            color: paletteColors.muted,
-            opacity: 1,
-          },
-        },
-      },
-    },
-    MuiFormHelperText: {
-      styleOverrides: {
-        root: {
-          marginLeft: 1,
-          fontSize: "0.75rem",
-        },
-      },
-    },
-  },
-});
+  });
+}
+
+export const muiTheme = createAppTheme("light");
