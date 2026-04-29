@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ThemeProvider } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
@@ -15,6 +16,9 @@ import {
 import { Button } from "../../design_system/components/ui/Button";
 import { Input } from "../../design_system/components/ui/Input";
 import LoginClient  from "../../api_client/Auth";
+import { createAppTheme } from "../../muiTheme";
+
+const lightTheme = createAppTheme("light");
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -91,6 +95,7 @@ export const LoginPage = () => {
         top: "40%", left: "20%", pointerEvents: "none",
       }} />
 
+      <ThemeProvider theme={lightTheme}>
       <Card variant="elevated" sx={{
         width: "100%", maxWidth: 400,
         background: "rgba(255, 255, 255, 0.88)",
@@ -191,6 +196,7 @@ export const LoginPage = () => {
           </CardFooter>
         </Box>
       </Card>
+      </ThemeProvider>
     </Box>
   );
 };

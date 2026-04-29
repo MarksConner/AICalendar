@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ThemeProvider } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -13,6 +14,9 @@ import {
 import { Input } from "../../design_system/components/ui/Input";
 import { Button } from "../../design_system/components/ui/Button";
 import LoginClient from "../../api_client/Auth";
+import { createAppTheme } from "../../muiTheme";
+
+const lightTheme = createAppTheme("light");
 
 
 export const RecoverAccountPage = () => {
@@ -68,6 +72,7 @@ export const RecoverAccountPage = () => {
         top: "40%", left: "20%", pointerEvents: "none",
       }} />
 
+      <ThemeProvider theme={lightTheme}>
       <Card variant="elevated" sx={{
         width: "100%", maxWidth: 440,
         background: "rgba(255, 255, 255, 0.88)",
@@ -133,6 +138,7 @@ export const RecoverAccountPage = () => {
           </CardFooter>
         </Box>
       </Card>
+      </ThemeProvider>
     </Box>
   );
 };

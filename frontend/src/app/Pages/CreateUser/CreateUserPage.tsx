@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { keyframes } from "@mui/system";
+import { ThemeProvider } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -14,7 +15,10 @@ import {
 import { Input } from "../../design_system/components/ui/Input";
 import { Button } from "../../design_system/components/ui/Button";
 import CreateUserClient from "../../api_client/CreateUserClient";
-import LoginClient from "../../api_client/Auth"; 
+import LoginClient from "../../api_client/Auth";
+import { createAppTheme } from "../../muiTheme";
+
+const lightTheme = createAppTheme("light");
 
 const floatAnim = keyframes`
   0%, 100% { transform: translateY(0px); }
@@ -131,6 +135,7 @@ export const CreateUserPage = () => {
           Welcome
         </Typography>
 
+        <ThemeProvider theme={lightTheme}>
         <Card variant="elevated" sx={{
           width: "100%",
           background: "rgba(255, 255, 255, 0.88)",
@@ -226,6 +231,7 @@ export const CreateUserPage = () => {
           </CardFooter>
         </Box>
       </Card>
+      </ThemeProvider>
       </Box>
     </Box>
   );
