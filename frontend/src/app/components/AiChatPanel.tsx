@@ -42,7 +42,7 @@ export const AiChatPanel = () => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicDraft, setHasMicDraft] = useState(false);
-  const {selectedCalendarId, selectedDate, selectedView, refreshEvents} = useCalendar();
+  const {selectedCalendarId, refreshEvents} = useCalendar();
   const geolocation = useGeolocation(true);
 
   const chatClient = useMemo(() => new ChatClient(), []);
@@ -276,7 +276,7 @@ export const AiChatPanel = () => {
         console.log("sendMessageAPI data:", sendData);
       }
 
-      const aiResponse = await chatClient.askAI(trimmed, calendarId ?? null, currentChatId ?? null, geolocation.lat, geolocation.lng, selectedDate, selectedView);
+      const aiResponse = await chatClient.askAI(trimmed, calendarId ?? null, currentChatId ?? null, geolocation.lat, geolocation.lng);
 
       if (!aiResponse.ok) {
         let details = "Failed to get AI response.";

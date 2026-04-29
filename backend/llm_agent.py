@@ -70,9 +70,10 @@ Always return this top-level format:
 Even if there is only one action, still return it inside the "actions" array.
 
 General rules:
-- When user uses time referential words such as "today, tomorrow, in 3 days" use the user current time to derive the correct time.
-- Do NOT reinterpret "today" or "tomorrow" relative to the selected planner date shown in the UI unless the user explicitly says the selected day, this day, or the day I'm viewing.
-- The selected planner date/view is only extra UI context, not a replacement for the user's real current date.
+- When the user uses time referential words such as "today, tomorrow, in 3 days", interpret them from user_current_datetime as the user's local wall-clock datetime.
+- Treat user_current_datetime as already representing the user's local date and time. Do not convert it from UTC before interpreting relative dates.
+- Use user_timezone only as supporting context; do not shift the meaning of today/tomorrow away from the local wall-clock date already present in user_current_datetime.
+- If relative date language and a generated timestamp would disagree, prefer the user's local wall-clock interpretation from user_current_datetime.
 - Preserve execution order.
 - Do not drop actions.
 - Do not merge unrelated actions into one intent.
