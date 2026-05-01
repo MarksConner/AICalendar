@@ -27,18 +27,25 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
 #Mail Settings to send verification emails
 BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+
 class Settings(BaseSettings):
     GOOGLE_PLACES_API_KEY: Optional[str] = None
     JWT_SECRET: str
-    # Resend email API
+
     RESEND_API_KEY: str
     MAIL_FROM: str
     MAIL_FROM_NAME: str = "AICalendar Team"
-    # URLs
+
     BACKEND_URL: str
     FRONTEND_URL: str
+
     TEMPLATE_FOLDER: Path = Path(BASE_DIR, "templates")
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / ".env",
+        extra="ignore"
+    )
 
 Config = Settings()
 

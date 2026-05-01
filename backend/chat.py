@@ -1,6 +1,7 @@
 from datetime import timedelta, date
 import json
 import uuid
+from inspect import signature
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -31,6 +32,102 @@ router = APIRouter()
 schedule = Schedule()
 RECENT_SUGGESTIONS_BY_CHAT: dict[str, list[dict]] = {}
 PENDING_BULK_REQUESTS_BY_CHAT: dict[str, dict[str, Any]] = {}
+
+def _is_bookable_request(message: str | None, action: dict[str, Any]) -> bool:
+    normalized_message = (message or "").lower()
+
+    raw_type = (
+        action.get("event_type")
+        or action.get("type")
+        or action.get("calendar_event_type")
+    )
+
+    if isinstance(raw_type, str) and raw_type.lower() in {
+        "bookable",
+        "booking",
+        "availability",
+        "bookable_slot",
+        "availability_slot",
+    }:
+        return True
+
+    if action.get("bookable") is True or action.get("is_bookable") is True:
+        return True
+
+    return "bookable" in normalized_message or "booking" in normalized_message
+
+
+def _looks_like_recurring_request(message: str | None) -> bool:
+    normalized = (message or "").lower()
+
+    recurring_words = [
+        "every",
+        "daily",
+        "weekly",
+        "monthly",
+        "recurring",
+        "repeat",
+        "repeating",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+        "mondays",
+        "tuesdays",
+        "wednesdays",
+        "thursdays",
+        "fridays",
+        "saturdays",
+        "sundays",
+        "weekday",
+        "weekdays",
+        "weekend",
+        "weekends",
+        "monday-friday",
+        "monday through friday",
+        "monday to friday",
+    ]
+
+    return any(word in normalized for word in recurring_words)
+
+
+def _create_event_safe(
+    db: Session,
+    calendar_id: uuid.UUID,
+    event_name: str,
+    full_address: str,
+    start_time: datetime,
+    end_time: datetime,
+    description: str,
+    priority_rank: int,
+    event_type: str | None = None,
+):
+    kwargs = {
+        "db": db,
+        "calendar_id": calendar_id,
+        "event_name": event_name,
+        "full_address": full_address,
+        "start_time": start_time,
+        "end_time": end_time,
+        "description": description,
+        "priority_rank": priority_rank,
+    }
+
+    if event_type and "event_type" in signature(create_event).parameters:
+        kwargs["event_type"] = event_type
+
+    created_event = create_event(**kwargs)
+
+    if event_type and hasattr(created_event, "event_type"):
+        created_event.event_type = event_type
+        db.add(created_event)
+        db.commit()
+        db.refresh(created_event)
+
+    return created_event
 
 class UserMessage(BaseModel):
     message: str
@@ -516,6 +613,7 @@ def _format_event_line(event: dict) -> str:
     return f"• {event.get('name', 'Untitled event')} — {time_part}"
 
 
+
 def _coerce_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -875,6 +973,26 @@ def chat(data: UserMessage):
             "selection": _selection_from_message(data.message),
             **_parse_inline_time_details(data.message, data.current_time),
         }]
+        
+    elif (
+        _is_bookable_request(data.message, {})
+        and _message_has_explicit_clock_time(data.message)
+        and not _looks_like_recurring_request(data.message)
+        and not _is_bulk_consecutive_request(data.message)
+    ):
+        parsed_bookable_time = _parse_inline_time_details(data.message, data.current_time)
+        if parsed_bookable_time.get("start_time"):
+            forced_actions = [{
+                "intent": "add_event",
+                "title": "Bookable Event",
+                "start_time": parsed_bookable_time.get("start_time"),
+                "end_time": parsed_bookable_time.get("end_time"),
+                "duration_minutes": parsed_bookable_time.get("duration_minutes") or 60,
+                "location": None,
+                "priority_rank": 0,
+                "recurring": False,
+                "event_type": "bookable",
+            }]
     else:
         simple_add_event = _try_build_simple_add_event_action(data.message, data.current_time)
         if simple_add_event:
@@ -954,6 +1072,7 @@ def chat(data: UserMessage):
                 duration = int(action.get("duration_minutes") or 60)
                 priority = action.get("priority_rank", 0)
                 recurring = bool(action.get("recurring"))
+                event_type = "bookable" if _is_bookable_request(data.message, action) else None
 
                 if not data.calendar_id:
                     results.append({"error": "Missing calendar_id for event creation."})
@@ -972,7 +1091,7 @@ def chat(data: UserMessage):
                         created_events = []
 
                         for oc_start_time, oc_end_time in occurrences:
-                            created_event = create_event(
+                            created_event = _create_event_safe(
                                 db=session,
                                 calendar_id=uuid.UUID(data.calendar_id),
                                 event_name=title,
@@ -981,6 +1100,7 @@ def chat(data: UserMessage):
                                 end_time=oc_end_time,
                                 description=action.get("description", ""),
                                 priority_rank=priority,
+                                event_type=event_type,
                             )
 
                             created_events.append({
@@ -1020,7 +1140,7 @@ def chat(data: UserMessage):
                             results.append({"error": "Event time missing and no time window provided"})
                             continue
 
-                    created_event = create_event(
+                    created_event = _create_event_safe(
                         db=session,
                         calendar_id=uuid.UUID(data.calendar_id),
                         event_name=title,
@@ -1029,6 +1149,7 @@ def chat(data: UserMessage):
                         end_time=end_dt,
                         description=action.get("description", ""),
                         priority_rank=priority,
+                        event_type=event_type,
                     )
 
                     results.append({
@@ -1500,6 +1621,3 @@ def handle_recurrence(action: dict[str, Any]) -> list[tuple[datetime, datetime]]
         raise ValueError("Too many recurring occurrences. Limit is 120.")
 
     return occurrences
-
-def handle_list_all_participants_of_an_event():
-    return None

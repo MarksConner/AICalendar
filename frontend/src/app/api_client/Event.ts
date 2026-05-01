@@ -8,6 +8,12 @@ export interface AddEventPayload {
   priority? : number;
 };
 
+export interface BookEventPayload {
+  name: string;
+  email: string;
+  notes?: string;
+}
+
 
 export type RequestOptions = {
   method: "GET" | "POST" | "PUT" | "DELETE";
@@ -51,6 +57,28 @@ export default class EventClient {
     return this.request({
       method: "POST",
       url: "/events/create",
+      body: payload,
+    });
+  }
+  
+  async setEventBookable(eventId: string): Promise<Response> {
+    return this.request({
+      method: "PUT",
+      url: `/events/bookable/${eventId}`,
+    });
+  }
+
+  async getBookableEvents(calendarId: string): Promise<Response> {
+    return this.request({
+      method: "GET",
+      url: `/events/calendar/${calendarId}/bookable`,
+    });
+  }
+
+  async bookEvent(eventId: string, payload: BookEventPayload): Promise<Response> {
+    return this.request({
+      method: "POST",
+      url: `/events/book/${eventId}`,
       body: payload,
     });
   }

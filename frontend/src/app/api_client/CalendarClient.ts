@@ -1,6 +1,7 @@
 import type { CreateEventFormData } from "../components/CreateEventDialog";
 import { handleSessionTimeout } from "../services/auth/sessionTimeout";
 import { tryRefreshAccessToken } from "../services/adapters/http/httpClient";
+import EventClient from "../api_client/Event";
 
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
@@ -160,7 +161,19 @@ export default class CalendarClient {
             url: `/calendar/export/${calendar_id}`,
         });
     }
-    async deleteCalendarAPI(calendar_id: string): Promise<Response> {
-        return this.request({method: "DELETE",url: `/calendar/delete-calendar/${calendar_id}`,});
+
+    async publishCalendar(calendarId: string): Promise<Response> {
+    return this.request({
+        method: "GET",
+        url: `/calendar/publish/${calendarId}`,
+    });
     }
+
+    async deleteCalendarAPI(calendar_id: string): Promise<Response> {
+    return this.request({
+        method: "DELETE",
+        url: `/calendar/delete-calendar/${calendar_id}`,
+    });
+    }
+
 }

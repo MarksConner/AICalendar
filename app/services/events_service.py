@@ -1,5 +1,4 @@
 
-
 from app.db import SessionLocal
 from app.models.events import Events
 from app.models.event_participants import EventParticipants
@@ -8,7 +7,7 @@ from sqlalchemy import UUID
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from backend.mapbox import geocode
-
+import resend
 
 
 def create_event(db: Session, calendar_id: UUID, event_name: str, full_address: str, start_time:datetime, end_time: datetime, description: str, priority_rank: int) -> Events:
@@ -95,12 +94,52 @@ def update_event(db: Session,event_id: UUID,event_name: str | None = None,start_
     db.refresh(event)
     return True
 
-def remove_event(db: Session, event_id: UUID)->bool:
-    event = (db.query(Events).filter(Events.event_id == event_id).one_or_none())
+async def remove_event(db: Session, event_id: UUID) -> bool:
+    event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
+
     if event is None:
         raise ValueError("Event not found")
+
+    email_data = []
+
+    # Only collect cancellation email info for booked bookable events.
+    # All other events delete normally.
+    if event.event_type == "bookable" and event.is_booked:
+        participants = get_participants_for_event(db=db, event_id=event_id)
+
+        for participant in participants:
+            if participant.info and "Email:" in participant.info:
+                email_line = next(
+                    (
+                        line for line in participant.info.split("\n")
+                        if line.strip().startswith("Email:")
+                    ),
+                    None
+                )
+
+                if email_line:
+                    email = email_line.replace("Email:", "").strip()
+
+                    email_data.append({
+                        "email": email,
+                        "name": participant.name,
+                        "event_name": event.event_name,
+                    })
+
+    # If this fails, the event should not be considered deleted.
     db.delete(event)
     db.commit()
+
+    for item in email_data:
+        try:
+            await send_email_to_booked_event_participant_canceling_event(
+                email=item["email"],
+                name=item["name"],
+                event_name=item["event_name"],
+            )
+        except Exception as e:
+            print("Cancellation email failed:", str(e), flush=True)
+
     return True
 
 
@@ -128,52 +167,25 @@ def update_event_location(db: Session, calendar_id: UUID, event_id: UUID, new_lo
 
 
 # This function accomplishes two things: it creates a new participant in the Participants table and then creates an association in the EventParticipants table to link that participant to the specified event. It also checks if the event exists before trying to create the participant and association.
-def add_event_participant(
-    db: Session,
-    event_id: UUID,
-    name: str,
-    info: str | None = None,
-    full_address: str | None = None,
-) -> Participants:
+def add_event_participant(db: Session,event_id: UUID,name: str,info: str | None = None,full_address: str | None = None,) -> Participants:
     event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
     if event is None:
         raise ValueError("Event not found")
 
     participant = (
-        db.query(Participants)
-        .filter(
-            Participants.name == name,
-            Participants.info == info,
-            Participants.full_address == full_address,
-        )
-        .one_or_none()
-    )
+        db.query(Participants).filter(Participants.name == name,Participants.info == info,Participants.full_address == full_address,).one_or_none())
 
     if participant is None:
-        participant = Participants(
-            name=name,
-            info=info,
-            full_address=full_address,
-        )
+        participant = Participants(name=name,info=info,full_address=full_address,)
         db.add(participant)
         db.flush()
 
     existing_link = (
         db.query(EventParticipants)
-        .filter(
-            EventParticipants.event_id == event_id,
-            EventParticipants.participant_id == participant.participant_id,
-        )
-        .one_or_none()
-    )
+        .filter(EventParticipants.event_id == event_id,EventParticipants.participant_id == participant.participant_id,).one_or_none())
 
     if existing_link is None:
-        db.add(
-            EventParticipants(
-                event_id=event_id,
-                participant_id=participant.participant_id,
-            )
-        )
+        db.add(EventParticipants(event_id=event_id,participant_id=participant.participant_id,))
 
     db.commit()
     db.refresh(participant)
@@ -194,20 +206,12 @@ def remove_event_participant(db: Session, event_id: UUID, participant_id: UUID) 
 # Remove participant. If an participant has not associations in EventParticipants it is removed.
 
 def remove_participant(db: Session, participant_id: UUID) -> bool:
-    participant = (
-        db.query(Participants)
-        .filter(Participants.participant_id == participant_id)
-        .one_or_none()
-    )
+    participant = (db.query(Participants).filter(Participants.participant_id == participant_id).one_or_none())
 
     if participant is None:
         raise ValueError("Participant not found")
 
-    association_exists = (
-        db.query(EventParticipants)
-        .filter(EventParticipants.participant_id == participant_id)
-        .first()
-    )
+    association_exists = (db.query(EventParticipants).filter(EventParticipants.participant_id == participant_id).first())
 
     if association_exists is not None:
         raise ValueError("Cannot delete participant because they are still associated with one or more events")
@@ -221,34 +225,17 @@ def get_participants_for_event(db: Session, event_id: UUID) -> list[Participants
     event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
     if event is None:
         raise ValueError("Event not found")
-
     participants = (
-        db.query(Participants)
-        .join(
-            EventParticipants,
-            Participants.participant_id == EventParticipants.participant_id,
-        )
-        .filter(EventParticipants.event_id == event_id)
-        .all()
-    )
-
+        db.query(Participants).join(EventParticipants,Participants.participant_id == EventParticipants.participant_id,).filter(EventParticipants.event_id == event_id).all())
     return participants
 
 
 def get_participant_details(db: Session, participant_id: UUID) -> Participants | None:
-    return (
-        db.query(Participants)
-        .filter(Participants.participant_id == participant_id)
-        .one_or_none()
-    )
+    return (db.query(Participants).filter(Participants.participant_id == participant_id).one_or_none())
 
 
 def get_participant_location(db: Session, participant_id: UUID) -> str | None:
-    participant = (
-        db.query(Participants)
-        .filter(Participants.participant_id == participant_id)
-        .one_or_none()
-    )
+    participant = (db.query(Participants).filter(Participants.participant_id == participant_id).one_or_none())
 
     if participant is None:
         raise ValueError("Participant not found")
@@ -258,11 +245,7 @@ def get_participant_location(db: Session, participant_id: UUID) -> str | None:
 
 # General function to update any given field of the participant.
 def update_participant_info(db: Session,participant_id: UUID,name: str | None = None,info: str | None = None,full_address: str | None = None,) -> Participants:
-    participant = (
-        db.query(Participants)
-        .filter(Participants.participant_id == participant_id)
-        .one_or_none()
-    )
+    participant = (db.query(Participants).filter(Participants.participant_id == participant_id).one_or_none())
 
     if participant is None:
         raise ValueError("Participant not found")
@@ -293,3 +276,85 @@ def detect_participant_event_conflicts(db: Session,participant_id: UUID, start_t
 
 def update_participant_location( db: Session,participant_id: UUID,new_location: str,) -> Participants:
     return update_participant_info(db=db,participant_id=participant_id,full_address=new_location,)
+
+
+def set_event_as_bookable(db: Session, event_id: UUID) -> Events:
+    event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
+
+    if event is None:
+        raise ValueError("Event not found")
+
+    event.event_type = "bookable"
+    event.is_booked = False
+
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+def get_bookable_events_for_calendar(db: Session, calendar_id: UUID) -> list[Events]:
+    events = (db.query(Events).filter(Events.calendar_id == calendar_id).filter(Events.event_type == "bookable").filter(Events.is_booked == False).all())
+    return events
+
+
+def book_event(db: Session, event_id: UUID, name: str, email: str, notes: str | None = None) -> Events:
+    event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
+
+    if event is None:
+        raise ValueError("Event not found")
+
+    if event.event_type != "bookable":
+        raise ValueError("Event is not bookable")
+
+    if event.is_booked:
+        raise ValueError("Event is already booked")
+
+    event.is_booked = True
+
+    booking_info = f"Email: {email}"
+
+    if notes:
+        booking_info = booking_info + f"\nNotes: {notes}"
+    
+    event.is_booked = True
+    event.priority_rank = 3
+    add_event_participant(db=db,event_id=event_id,name=name,info=booking_info,full_address=None,)
+
+    db.commit()
+    db.refresh(event)
+    return event
+
+#check if event is bookable
+def is_event_bookable(db: Session, event_id: UUID) -> bool:
+    event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
+
+    if event is None:
+        raise ValueError("Event not found")
+
+    return event.event_type == "bookable" and not event.is_booked
+
+
+
+#Helper 
+
+async def send_email_to_booked_event_participant_canceling_event(
+    email: str,
+    name: str,
+    event_name: str,
+):
+    params: resend.Emails.SendParams = {
+        "from": "AgendaAI <onboarding@resend.dev>",
+        "to": [email],
+        "subject": f"Event canceled: {event_name}",
+        "html": f"""
+            <p>Hello {name},</p>
+
+            <p>The event <strong>{event_name}</strong> has been canceled.</p>
+
+            <p>Please contact the calendar owner to reschedule.</p>
+
+            <p>Thank you.</p>
+        """,
+    }
+
+    await resend.Emails.send_async(params)

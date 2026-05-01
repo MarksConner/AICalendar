@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
@@ -11,9 +12,22 @@ import { EventMap } from "../../components/EventMap";
 import { LocationAutocomplete } from "../../components/LocationAutocomplete";
 import { extractTimeHHMM } from "./dayPlannerUtils";
 
+const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
+
+type EventParticipant = {
+  participant_id?: string;
+  name?: string | null;
+  info?: string | null;
+  full_address?: string | null;
+};
+
+type EventDetailsTimelineItem = DailyTimelineItem & {
+  participants?: EventParticipant[];
+};
+
 type EventDetailsDialogProps = {
   // Selected event to show in the popup; null means unavailable.
-  event: DailyTimelineItem | null;
+  event: EventDetailsTimelineItem | null;
   // Controls popup visibility.
   isOpen: boolean;
   // Close handler for backdrop / close button.
@@ -82,6 +96,62 @@ export const EventDetailsDialog = ({
   travelTimeMin,
   isTravelLoading,
 }: EventDetailsDialogProps) => {
+  const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [isParticipantsLoading, setIsParticipantsLoading] = useState(false);
+
+  useEffect(() => {
+    let canceled = false;
+
+    const fetchParticipants = async () => {
+      if (!isOpen || !event?.id) {
+        setParticipants([]);
+        return;
+      }
+
+      setParticipants(event.participants ?? []);
+      setIsParticipantsLoading(true);
+
+      try {
+        const accessToken = localStorage.getItem("access_token");
+
+        const response = await fetch(
+          `${BASE_API_URL}/events/participants_for_event/${event.id}`,
+          {
+            headers: {
+              ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch participants");
+        }
+
+        const data = await response.json();
+
+        if (!canceled) {
+          setParticipants(data.participants ?? []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch participants", err);
+
+        if (!canceled) {
+          setParticipants(event.participants ?? []);
+        }
+      } finally {
+        if (!canceled) {
+          setIsParticipantsLoading(false);
+        }
+      }
+    };
+
+    fetchParticipants();
+
+    return () => {
+      canceled = true;
+    };
+  }, [isOpen, event?.id]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -198,6 +268,46 @@ export const EventDetailsDialog = ({
                 {event.flexible && (
                   <Typography variant="caption" color="text.secondary">
                     Flexible
+                  </Typography>
+                )}
+              </Box>
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  Participants
+                </Typography>
+
+                {isParticipantsLoading ? (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
+                    <CircularProgress size={12} />
+                    <Typography variant="body2" color="text.secondary">
+                      Loading participants...
+                    </Typography>
+                  </Box>
+                ) : participants.length > 0 ? (
+                  <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                    {participants.map((participant, index) => (
+                      <Box key={participant.participant_id || index}>
+                        <Typography variant="body2" color="text.primary">
+                          {participant.name || "Unnamed participant"}
+                        </Typography>
+
+                        {participant.info && (
+                          <Typography variant="caption" color="text.secondary">
+                            {participant.info}
+                          </Typography>
+                        )}
+
+                        {participant.full_address && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            {participant.full_address}
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No participants added.
                   </Typography>
                 )}
               </Box>

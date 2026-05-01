@@ -187,6 +187,7 @@ If intent == "chat", include:
 {
   "intent": "chat",
   "response": string
+  "event_name": string (optional)
 }
 Rules for update event:
 
@@ -218,6 +219,7 @@ if intent == "delete_event", include:
 {
   "intent": "delete_event",
   "event_id": string
+  "event_name": string 
 }
 
 Rules for event_participant:

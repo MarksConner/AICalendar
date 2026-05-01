@@ -138,6 +138,7 @@ def format_events_for_llm(events: List[EventForSuggestion]) -> str:
 
                 participant_lines.append(participant_text)
 
+            line += ". Participants: " + "; ".join(participant_lines)
 
         lines.append(line)
 
@@ -342,19 +343,32 @@ def extract_json_array(text: str) -> str:
 
     raise HTTPException(status_code=500, detail="LLM did not return a JSON array")
 
-
 def normalize_suggestion_item(item: dict[str, Any]) -> SuggestionItem:
+    category = item.get("category")
+    event_name = item.get("event_name")
+    title = item.get("title")
+
+    if not title:
+        if category == "Schedule Insight":
+            title = event_name or "Upcoming event"
+        elif category == "Tip":
+            title = "Daily tip"
+        elif category == "Travel":
+            title = "Travel reminder"
+        else:
+            title = "Suggestion"
+
     return SuggestionItem(
         id=str(item.get("id") or uuid4()),
-        title=str(item.get("title") or "Suggestion"),
+        title=str(title),
         description=str(item.get("description") or ""),
-        category=item.get("category"),
-        event_name=item.get("event_name"),
+        category=category,
+        event_name=event_name,
         distance_from_user=item.get("distance_from_user"),
         participants_summary=item.get("participants_summary"),
         reminder=item.get("reminder"),
     )
-
+    
 
 def parse_llm_response(llm_output: str) -> List[SuggestionItem]:
     if not llm_output or not llm_output.strip():

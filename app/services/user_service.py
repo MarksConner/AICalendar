@@ -15,8 +15,8 @@ ACCESS_TOKEN_MINUTES = int(os.getenv("ACCESS_TOKEN_MINUTES", "60"))
 
 def create_user(session: Session, email: str, username: str, first_name: str, last_name: str, password: str) -> Users:
 
-    if len(password) <= 8:
-        raise ValueError("Password must be more than 8 characters long.")
+    if len(password) <= 5  :
+        raise ValueError("Password must be more than 5 characters long.")
     token = uuid.uuid4()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     new_user = Users(
@@ -118,8 +118,8 @@ def create_reset_token(db: Session, email: str) ->bool:
     
 def reset_password_token(db: Session, email:str, token: str, new_password: str) -> bool:
     user = get_user_by_email(db,email)
-    if len(new_password) <= 8:
-        raise ValueError("Password must be more than 8 characters long.")
+    if len(new_password) < 6:
+        raise ValueError("Password must be at least 6 characters long.")
     print("incoming token:", token, type(token))
     print("db token:", user.password_reset_token, type(user.password_reset_token))
     print("expires:", user.password_reset_expires_at, "now:", datetime.now(timezone.utc))

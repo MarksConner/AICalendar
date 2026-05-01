@@ -1,10 +1,8 @@
-from sqlalchemy import Column, String, Text, Integer, Float, TIMESTAMP
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, String, Text, Integer, Float, TIMESTAMP, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import func
-from sqlalchemy import TIMESTAMP, ForeignKey, func
-import uuid
 from .base import Base
+import uuid
 
 class Events(Base):
     __tablename__ = "events"
@@ -19,3 +17,5 @@ class Events(Base):
     end_time = Column(TIMESTAMP)
     calendar_id = Column(UUID(as_uuid=True), ForeignKey('calendar.calendar_id'))
     created_at = Column(TIMESTAMP, server_default=func.now())
+    event_type = Column(Text, nullable=False, default = "normal")
+    is_booked = Column(Boolean,nullable = False, default = False)

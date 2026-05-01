@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.base_model_classes import CalendarCreate
 from app.config import get_current_user
 from app.db import SessionLocal
-from app.services.calendar_service import create_calendar, get_calendars_by_user_id, delete_calendar_by_id, day_scheduling_hints
+from app.services.calendar_service import create_calendar, get_calendars_by_user_id, delete_calendar_by_id, day_scheduling_hints, set_calendar_as_public, get_calendar_token, get_if_calendar_is_public, get_public_calendar_by_token
 from app.services.events_service import create_event
 from app.services.ics_parser import parse_ics
 
@@ -128,10 +128,49 @@ def get_day_hints_route(
 def export_calendar(calendar_id: str):
     ics_content = export_calendar_to_ics(calendar_id)
 
-    return Response(
-        content=ics_content,
-        media_type="text/calendar",
-        headers={
-            "Content-Disposition": f'attachment; filename="calendar-{calendar_id}.ics"'
-        },
-    )
+    return Response(content=ics_content,media_type="text/calendar",headers={"Content-Disposition": f'attachment; filename="calendar-{calendar_id}.ics"'},)
+
+
+
+#Make calendar public. 
+@router.get("/publish/{calendar_id}")
+def publish_calendar_route(calendar_id: UUID, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    try:
+        calendar = set_calendar_as_public(db, calendar_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Calendar not found")
+
+    return {"message": "Calendar is now public","calendar_id": calendar.calendar_id,"public_token": calendar.public_token}
+
+
+@router.get("/{calendar_id}/public-token")
+def get_calendar_token_route(calendar_id: UUID, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    try:
+        token = get_calendar_token(db, calendar_id)
+        return {
+            "calendar_id": calendar_id,
+            "public_token": token,
+        }
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Calendar not found")
+
+
+@router.get("/{calendar_id}/is-public")
+def get_if_calendar_is_public_route(calendar_id: UUID, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    try:
+        is_public = get_if_calendar_is_public(db, calendar_id)
+        return {
+            "calendar_id": calendar_id,
+            "is_public": is_public,
+        }
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Calendar not found")
+    
+
+@router.get("/public/{public_token}")
+def get_public_calendar_route(public_token: UUID, db: Session = Depends(get_db)):
+    try:
+        return get_public_calendar_by_token(db, public_token)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Public calendar not found")
+    

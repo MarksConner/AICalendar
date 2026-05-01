@@ -34,6 +34,8 @@ import {
   MessageCircle,
   Moon,
 } from "lucide-react";
+import Auth from "./api_client/Auth";
+import LoginClient from "./api_client/Auth";
 
 const calendarViewOptions: Array<{ value: CalendarView; label: string }> = [
   { value: "day", label: "Day" },
@@ -251,8 +253,36 @@ export function AppShell() {
 
   const { mode, toggleMode } = useThemeMode();
   const userId = localStorage.getItem("user_id") ?? "Unknown user";
-  const userInitial = userId.charAt(0).toUpperCase();
+  const [username, setUsername] = useState("Unknown user");
 
+useEffect(() => {
+  const fetchUsername = async () => {
+    if (!userId) {
+      setUsername("Unknown user");
+      return;
+    }
+  try {
+      const token = localStorage.getItem("access_token") ?? "";
+      const loginClient = new LoginClient();
+      const result: any = await loginClient.getUserName(userId, token);
+
+      if (result instanceof Response) {
+        const body = await result.json().catch(() => null);
+        setUsername(body?.username ?? body?.user_name ?? body?.email ?? userId);
+      } else if (typeof result === "string") {
+        setUsername(result);
+      } else {
+        setUsername(result?.username ?? result?.user_name ?? result?.email ?? userId);
+      }
+    } catch (err) {
+      console.error("Failed to fetch username", err);
+      setUsername(userId);
+    }
+  };
+  fetchUsername();
+}, [userId]);
+
+const userInitial = username.charAt(0).toUpperCase();
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const isMenuOpen = Boolean(menuAnchor);
   const handleOpenMenu = (e: React.MouseEvent<HTMLElement>) => setMenuAnchor(e.currentTarget);
@@ -429,7 +459,7 @@ export function AppShell() {
                 {/* User info */}
                 <Box sx={{ px: 2, py: 1.5 }}>
                   <Typography variant="caption" color="text.secondary">Signed in as</Typography>
-                  <Typography variant="body2" fontWeight={600} noWrap>{userId}</Typography>
+                  <Typography variant="body2" fontWeight={600} noWrap>{username}</Typography>
                 </Box>
 
                 <Divider />

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text
+from sqlalchemy import Column, String, Text, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import TIMESTAMP, ForeignKey, func
@@ -14,3 +14,5 @@ class Calendar(Base):
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"))
     icsfile = Column(Text, nullable=True)
+    is_public = Column(Boolean, nullable=False, default=False)
+    public_token = Column(UUID(as_uuid=True), nullable=True, default=uuid.uuid4)

@@ -183,3 +183,16 @@ class RouteResponse(BaseModel):
     distance_meters: float
     duration_seconds: float
     geometry: dict[str, Any] | None = None
+
+
+#Bookable events 
+
+class BookingRequest(BaseModel):
+    name: str
+    email: str
+    notes: str | None = None
+
+class PublicBookingRequest(BaseModel):
+    name: str
+    email: str
+    description: str | None = None

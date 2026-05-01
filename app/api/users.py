@@ -24,7 +24,32 @@ def get_db():
 
 @router.post("")
 def create_user_route(user: UserCreate, db: Session = Depends(get_db)):
-    return create_user(db,user.email,user.username,user.first_name,user.last_name,user.password)
+    if user.password != user.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    
+    if len(user.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
+    try:
+        return create_user(db, user.email, user.username, user.first_name, user.last_name, user.password)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    # Less than 6 characters is handled in the service layer, but we can also catch it here to avoid unnecessary DB calls
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+#Get username by user_id
+@router.get("/{user_id}/username")
+def get_user_name(user_id: UUID, db: Session = Depends(get_db)):
+    try:
+        user = get_user_by_user_id(db, user_id)
+        if user is None:
+            raise ValueError("User not found")
+        return {"username": user.username}
+    except ValueError:
+        raise HTTPException(status_code=404, detail="User not found")
+
 
 @router.get("/{user_id}/email")
 def get_user_email(user: UUID, db: Session = Depends(get_db)):

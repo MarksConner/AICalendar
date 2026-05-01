@@ -1,0 +1,3 @@
+ALTER TABLE events
+ADD COLUMN event_type TEXT NOT NULL DEFAULT 'normal',
+ADD COLUMN is_booked BOOLEAN NOT NULL DEFAULT false;

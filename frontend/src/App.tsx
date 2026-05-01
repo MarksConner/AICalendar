@@ -50,6 +50,11 @@ function RouteFallback() {
   return <div style={{ padding: "1rem" }}>Loading…</div>;
 }
 
+const PublicCalendarPage = lazy(() =>
+  import("./app/Pages/PublicCalendar/PublicCalendarPage")
+);
+
+
 function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -60,6 +65,7 @@ function App() {
         <Route path="/create-user" element={<CreateUserPage />} />
         <Route path="/recover-account" element={<RecoverAccountPage />} />
         <Route path="/update" element={<ResetLogin />} />
+        <Route path="/public-calendar/:publicToken" element={<PublicCalendarPage />} />
 
         {/* App routes inside shell (require auth) */}
         <Route element={<AppShell />}>

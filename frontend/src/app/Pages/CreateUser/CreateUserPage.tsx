@@ -60,13 +60,7 @@ export const CreateUserPage = () => {
 
       const api = new CreateUserClient();
 
-      const res = await api.createUser({
-        email,
-        username,
-        first_name,
-        last_name,
-        password,
-      });
+      const res = await api.createUser({email,username,first_name,last_name,password,});
 
       const body = await res.json().catch(() => null);
 
@@ -184,7 +178,7 @@ export const CreateUserPage = () => {
               <Input
                 label="Password"
                 type="password"
-                placeholder="Create a password"
+                placeholder="Create a password (min 6 characters)"
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -192,7 +186,7 @@ export const CreateUserPage = () => {
               <Input
                 label="Confirm password"
                 type="password"
-                placeholder="Re-enter your password"
+                placeholder="Re-enter your password (min 6 characters)"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}

@@ -1,0 +1,2 @@
+ALTER TABLE calendar
+ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT false;

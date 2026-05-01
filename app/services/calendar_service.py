@@ -8,6 +8,7 @@ from datetime import datetime
 from backend.llm_agent import ask_llm
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+import uuid
 
 def create_calendar(session: Session, calendar_name: str,user_id: UUID, date_start: Optional[datetime] = None, date_end:Optional[datetime] = None, icsfile: Optional[str] = None)->Calendar:
     new_calendar = Calendar(    
@@ -139,15 +140,9 @@ def get_calendar_context(session: Session, calendar_id: str) -> dict:
         ]
     }
 
-def day_scheduling_hints(
-    db: Session,
-    user_id: UUID,
-    calendar_id: UUID,
-    date: str,
-    start_time: str,
-    duration_minutes: int,
-    end_time: str | None = None,
-):
+
+def day_scheduling_hints(db: Session,user_id: UUID,calendar_id: UUID,date: str,start_time: str,duration_minutes: int,end_time: str | None = None,):
+
     # Validate calendar exists and belongs to user
     calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
     if not calendar:
@@ -182,11 +177,7 @@ def day_scheduling_hints(
         raise HTTPException(status_code=400, detail="endTime must be after startTime")
 
     # Return a event list with all events in calendar 
-    events = (
-        db.query(Events)
-        .filter(Events.calendar_id == calendar_id)
-        .all()
-    )
+    events = (db.query(Events).filter(Events.calendar_id == calendar_id).all())
 
     day_events = []
     conflicts = []
@@ -277,4 +268,93 @@ def day_scheduling_hints(
         },
         "conflicts": conflicts,
         "suggestions": suggestions,
+    }
+
+#Bookable Calendar
+
+
+def set_calendar_as_public(db: Session, calendar_id: UUID) -> Calendar:
+    calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
+    if calendar is None:
+        raise ValueError("Calendar not found")
+
+    calendar.is_public = True
+
+    if calendar.public_token is None:
+        calendar.public_token = uuid.uuid4()
+
+    db.commit()
+    db.refresh(calendar)
+
+    return calendar
+
+
+def get_calendar_token(db: Session, calendar_id: UUID):
+    calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
+    if calendar is None:
+        raise ValueError("Calendar not found")
+
+    if calendar.public_token is None:
+        calendar.public_token = uuid.uuid4()
+        db.commit()
+        db.refresh(calendar)
+
+    return calendar.public_token
+
+def get_if_calendar_is_public(db: Session, calendar_id: UUID) -> bool:
+    calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
+    if calendar is None:
+        raise ValueError("Calendar not found")
+
+    return calendar.is_public
+
+def set_calendar_as_private(db: Session, calendar_id: UUID) -> Calendar:
+    calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
+    if calendar is None:
+        raise ValueError("Calendar not found")
+
+    calendar.is_public = False
+
+    db.commit()
+    db.refresh(calendar)
+
+    return calendar
+
+
+def get_public_calendar_by_token(db: Session, public_token: UUID) -> dict:
+    calendar = (
+        db.query(Calendar)
+        .filter(Calendar.public_token == public_token)
+        .filter(Calendar.is_public == True)
+        .first()
+    )
+
+    if calendar is None:
+        raise ValueError("Public calendar not found")
+
+    events = (
+        db.query(Events)
+        .filter(Events.calendar_id == calendar.calendar_id)
+        .filter(Events.event_type == "bookable")
+        .order_by(Events.start_time.asc())
+        .all()
+    )
+
+    return {
+        "calendar_id": str(calendar.calendar_id),
+        "calendar_name": calendar.calendar_name,
+        "events": [
+            {
+                "event_id": str(event.event_id),
+                "event_name": event.event_name,
+                "start_time": event.start_time.isoformat() if event.start_time else None,
+                "end_time": event.end_time.isoformat() if event.end_time else None,
+                "event_description": event.event_description,
+                "full_address": event.full_address,
+                "priority_rank": event.priority_rank,
+                "event_type": event.event_type,
+                "is_booked": event.is_booked,
+            }
+            for event in events
+        ],
     }

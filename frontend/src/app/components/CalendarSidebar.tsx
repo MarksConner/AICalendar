@@ -1,66 +1,37 @@
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
-import Checkbox from "@mui/material/Checkbox";
 import Divider from "@mui/material/Divider";
 import ListItemButton from "@mui/material/ListItemButton";
 import Typography from "@mui/material/Typography";
-import { useMatch, useResolvedPath, NavLink } from "react-router-dom";
 import { Download, Plus, Trash2 } from "lucide-react";
 import { MiniMonth } from "./MiniMonth";
 import { useCalendar } from "../contexts/CalendarContext";
-import {
-  CreateEventDialog,
-  type CreateCalendarFormData,
-  type CreateEventFormData,
-} from "../components/CreateEventDialog";
+import {CreateEventDialog,type CreateCalendarFormData, type CreateEventFormData,} from "../components/CreateEventDialog";
 import { Button } from "../design_system/components/ui/Button";
 import IconButton from "@mui/material/IconButton";
 import CalendarClient from "../api_client/CalendarClient";
+import RemoveRedEyeIcon from '@mui/icons-material/RemoveRedEye';
+import {DialogBoxInterface} from "./DialogBoxInterface";
 
 type BackendCalendar = {
   calendar_id: string;
   calendar_name: string;
-};
-
-const SidebarLink = ({ to, label }: { to: string; label: string }) => {
-  const resolved = useResolvedPath(to);
-  const match = useMatch({ path: resolved.pathname, end: true });
-
-  return (
-    <ListItemButton
-      component={NavLink}
-      to={to}
-      selected={Boolean(match)}
-      disableRipple
-      sx={{
-        borderRadius: 1,
-        px: 1.5,
-        py: 1,
-        fontSize: "0.875rem",
-        color: "text.secondary",
-        "&.Mui-selected": {
-          bgcolor: "action.selected",
-          color: "text.primary",
-          fontWeight: 600,
-        },
-        "&.Mui-selected:hover": {
-          bgcolor: "action.selected",
-        },
-        "&:hover": {
-          bgcolor: "action.hover",
-          color: "text.primary",
-        },
-      }}
-    >
-      {label}
-    </ListItemButton>
-  );
+  public_token?: string | null;
+  is_public?: boolean;
 };
 
 export const CalendarSidebar = () => {
   const { selectedDate, setSelectedDate, selectedCalendarId, setSelectedCalendarId, refreshEvents} = useCalendar();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [calendars, setCalendars] = useState<BackendCalendar[]>([]);
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [calendarToDelete, setCalendarToDelete] = useState<BackendCalendar | null>(null);
+
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [calendarToPublish, setCalendarToPublish] = useState<BackendCalendar | null>(null);
+  const [displayPublishedCalendarLink, setDisplayPublishedCalendarLink] = useState(false);
+  const [publishedCalendarLink, setPublishedCalendarLink] = useState("");
 
   useEffect(() => {
     const fetchCalendars = async () => {
@@ -144,6 +115,90 @@ export const CalendarSidebar = () => {
     }
   };
 
+  const handleDeleteCalendar = async () => {
+    if (!calendarToDelete) return;
+
+    try {
+      const calendarClient = new CalendarClient();
+
+      const response = await calendarClient.deleteCalendarAPI(calendarToDelete.calendar_id);
+
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          body?.detail || body?.message || "Failed to delete calendar"
+        );
+      }
+
+      const updatedCalendars = calendars.filter(
+        (c) => c.calendar_id !== calendarToDelete.calendar_id
+      );
+
+      setCalendars(updatedCalendars);
+
+      if (selectedCalendarId === calendarToDelete.calendar_id) {
+        const nextCalendar = updatedCalendars[0];
+
+        if (nextCalendar) {
+          setSelectedCalendarId(nextCalendar.calendar_id);
+          localStorage.setItem("calendar_id", nextCalendar.calendar_id);
+        } else {
+          setSelectedCalendarId("");
+          localStorage.removeItem("calendar_id");
+        }
+
+        localStorage.removeItem("chat_id");
+        localStorage.removeItem("chat_messages");
+      }
+
+      setIsDeleteDialogOpen(false);
+      setCalendarToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete calendar", err);
+    }
+  };
+
+  const handlePublishCalendar = async () => {
+    if (!calendarToPublish) return;
+
+    try {
+      const calendarClient = new CalendarClient();
+      const response = await calendarClient.publishCalendar(calendarToPublish.calendar_id);
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(body?.detail || body?.message || "Failed to publish calendar");
+      }
+
+      const publicLink = `${window.location.origin}/public-calendar/${body.public_token}`;
+      setPublishedCalendarLink(publicLink);
+
+      setCalendars((prev) =>
+        prev.map((calendar) =>
+          calendar.calendar_id === calendarToPublish.calendar_id
+            ? {
+                ...calendar,
+                public_token: body.public_token,
+                is_public: true,
+              }
+            : calendar
+        )
+      );
+
+      try {
+        await navigator.clipboard.writeText(publicLink);
+      } catch (err) {
+        console.error("Failed to copy public calendar link", err);
+      }
+
+      setIsPublishDialogOpen(false);
+      setDisplayPublishedCalendarLink(true);
+    } catch (err) {
+      console.error("Failed to publish calendar", err);
+    }
+  };
+
   return (
     <Box
       component="aside"
@@ -184,7 +239,9 @@ export const CalendarSidebar = () => {
         </Typography>
 
         <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
-            {calendars.map((calendar) => {const isSelected = selectedCalendarId === calendar.calendar_id;
+            {calendars.map((calendar) => {
+            const isSelected = selectedCalendarId === calendar.calendar_id;
+            const isPublic = calendar.is_public === true;
             return (
               <ListItemButton
                 key={calendar.calendar_id}
@@ -223,7 +280,9 @@ export const CalendarSidebar = () => {
                     size="sm"
                     variant="ghost"
                     startIcon={<Download size={16} />}
-                    onClick={async () => {
+                    onClick={async (e) => {
+                      e.stopPropagation();
+
                       if (!calendar.calendar_id) return;
                       const calendarClient = new CalendarClient();
                       const response = await calendarClient.exportCalendarAPI(calendar.calendar_id);
@@ -245,52 +304,30 @@ export const CalendarSidebar = () => {
                     <IconButton
                       size="small"
                       edge="end"
-                      aria-label="delete calendar"
-                      onClick={async (e) => {
+                      aria-label="publish calendar"
+                      onClick={(e) => {
                         e.stopPropagation();
-
-                        const confirmed = window.confirm(
-                          `Delete calendar "${calendar.calendar_name}"?`
-                        );
-
-                        if (!confirmed) return;
-
-                        try {
-                          const calendarClient = new CalendarClient();
-
-                          const response = await calendarClient.deleteCalendarAPI(calendar.calendar_id);
-
-                          const body = await response.json().catch(() => null);
-
-                          if (!response.ok) {
-                            throw new Error(
-                              body?.detail || body?.message || "Failed to delete calendar"
-                            );
-                          }
-
-                          const updatedCalendars = calendars.filter(
-                            (c) => c.calendar_id !== calendar.calendar_id
-                          );
-
-                          setCalendars(updatedCalendars);
-
-                          if (selectedCalendarId === calendar.calendar_id) {
-                            const nextCalendar = updatedCalendars[0];
-
-                            if (nextCalendar) {
-                              setSelectedCalendarId(nextCalendar.calendar_id);
-                              localStorage.setItem("calendar_id", nextCalendar.calendar_id);
-                            } else {
-                              setSelectedCalendarId("");
-                              localStorage.removeItem("calendar_id");
-                            }
-
-                            localStorage.removeItem("chat_id");
-                            localStorage.removeItem("chat_messages");
-                          }
-                        } catch (err) {
-                          console.error("Failed to delete calendar", err);
-                        }
+                        setCalendarToPublish(calendar);
+                        setIsPublishDialogOpen(true);
+                      }}
+                      sx={{
+                        ml: 0.5,
+                        color: isPublic ? "error.main" : "text.secondary",
+                        "&:hover": {
+                          color: isPublic ? "error.dark" : "primary.main",
+                        },
+                      }}
+                    >
+                    <RemoveRedEyeIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      edge="end"
+                      aria-label="delete calendar"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCalendarToDelete(calendar);
+                        setIsDeleteDialogOpen(true);
                       }}
                       sx={{
                         ml: 0.5,
@@ -305,9 +342,106 @@ export const CalendarSidebar = () => {
                     </ListItemButton>
             );
           })}
+          
         </Box>
+      
       </Box>
 
+      <DialogBoxInterface
+        open={isPublishDialogOpen}
+        title="Publish Calendar"
+        content={<>Are you sure you want to publish the calendar "{calendarToPublish?.calendar_name}"? This action will make it visible to others.</>}
+        onClose={() => {setIsPublishDialogOpen(false);setCalendarToPublish(null);}}
+        actions={<>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsPublishDialogOpen(false);
+                setCalendarToPublish(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handlePublishCalendar}
+            >
+              Publish 
+            </Button>
+          </>
+        }
+      />
+
+      <DialogBoxInterface
+        open={displayPublishedCalendarLink}
+        title="Calendar Published"
+        content={
+          <>
+            Calendar published successfully. Save this link and share it with others to view your calendar and book appointments.
+            To create appointments, ask our AI assistant to create bookable events!
+            <br />
+            <br />
+            Link: {publishedCalendarLink}
+          </>
+        }
+        onClose={() => {
+          setDisplayPublishedCalendarLink(false);
+          setCalendarToPublish(null);
+          setPublishedCalendarLink("");
+        }}
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setDisplayPublishedCalendarLink(false);
+                setCalendarToPublish(null);
+                setPublishedCalendarLink("");
+              }}
+            >
+              Close
+            </Button>
+          </>
+        }
+      />
+      
+      <DialogBoxInterface
+        open={isDeleteDialogOpen}
+        title="Delete Calendar"
+        content={
+          <>
+            Are you sure you want to delete the calendar "{calendarToDelete?.calendar_name}"? You won't be able to recover it.
+          </>
+        }
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setCalendarToDelete(null);
+        }}
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsDeleteDialogOpen(false);
+                setCalendarToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="primary"
+              onClick={handleDeleteCalendar}
+            >
+              Delete
+            </Button>
+            
+          </>
+          
+        }
+      />
+      
     </Box>
+    
   );
 };

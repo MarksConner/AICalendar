@@ -2,10 +2,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.base_model_classes import AddEventParticipant, AddSuggestedEventRequest, EventCreate, EventParticipantInfo, EventUpdate, LocalEventSuggestion, LocalEventsRequest, ParticipantInfo, ParticipantsForEvent, RemoveEventParticipant, RouteRequest, RouteResponse, TravelTimeResponse
+from app.api.base_model_classes import AddEventParticipant, AddSuggestedEventRequest, EventCreate, EventParticipantInfo, EventUpdate, LocalEventSuggestion, LocalEventsRequest, ParticipantInfo, ParticipantsForEvent, RemoveEventParticipant, RouteRequest, RouteResponse, TravelTimeResponse, BookingRequest
 from app.db import SessionLocal
 from app.services.events_service import (create_event, get_events_for_calendar_day, get_events_for_calendar_month,update_event,detect_event_conflicts, 
- get_event_by_id, remove_event, add_event_participant, remove_event_participant,get_participants_for_event, get_participant_details,update_participant_location,update_participant_info,detect_participant_event_conflicts)
+ get_event_by_id, remove_event, add_event_participant, remove_event_participant,get_participants_for_event, get_participant_details,update_participant_location,update_participant_info,detect_participant_event_conflicts,  set_event_as_bookable, get_bookable_events_for_calendar, book_event)
 from datetime import datetime, timezone
 from app.services.google_places_service import search_local_events
 from app.services.mapbox_service import get_route
@@ -66,12 +66,17 @@ def update_event_route(event_id: UUID, event: EventUpdate, db: Session = Depends
     return get_event_by_id(db, event_id)
 
 @router.delete("/delete/{event_id}")
-def delete_event_route(event_id: UUID, db: Session = Depends(get_db)):
-    event = get_event_by_id(db, event_id)
-    check = remove_event(db, event_id)
-    if check == False:
-        raise HTTPException(status_code=404, detail="Event not found")
-    return {"message": "Event deleted successfully"}
+async def delete_event_route(event_id: UUID, db: Session = Depends(get_db)):
+    try:
+        check = await remove_event(db, event_id)
+
+        if check == False:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        return {"message": "Event deleted successfully"}
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.get("/event_id/{event_id}")
 def get_event_by_id_router(event_id: UUID ,db: Session = Depends(get_db) ):
@@ -189,12 +194,7 @@ def get_participant_info_route(participant_id: UUID,db: Session = Depends(get_db
     return participant_to_response(participant)
 
 @router.get("/event_id/{event_id}/travel_time", response_model=TravelTimeResponse)
-def get_travel_time_route(
-    event_id: UUID,
-    from_lat: float,
-    from_long: float,
-    db: Session = Depends(get_db),
-):
+def get_travel_time_route(event_id: UUID,from_lat: float,from_long: float,db: Session = Depends(get_db),):
     event = get_event_by_id(db, event_id)
     if event is None:
         raise HTTPException(status_code = 404, detail = "Event not found") #Server could not find requested resource
@@ -220,3 +220,36 @@ def get_travel_time_route(
         raise HTTPException(status_code = 503, detail = "Could not calculate travel time. Mapbox API may be down.") #Service unavailable
     
     return TravelTimeResponse(travel_time_min = travel_time, event_lat = event_lat, event_long = event_long)
+
+@router.put("/bookable/{event_id}")
+def set_event_bookable_route(event_id: UUID, db: Session = Depends(get_db)):
+    try:
+        event = set_event_as_bookable(db, event_id)
+        return event
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/calendar/{calendar_id}/bookable")
+def get_bookable_events_for_calendar_route(calendar_id: UUID, db: Session = Depends(get_db)):
+    events = get_bookable_events_for_calendar(db, calendar_id)
+    return events
+
+
+@router.post("/book/{event_id}")
+def book_event_route(event_id: UUID, request: BookingRequest, db: Session = Depends(get_db)):
+    try:
+        event = book_event(
+            db=db,
+            event_id=event_id,
+            name=request.name,
+            email=request.email,
+            notes=request.notes,
+        )
+        return {
+            "message": "Event booked successfully",
+            "event_id": event.event_id,
+            "event_name": event.event_name,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

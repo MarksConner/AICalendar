@@ -94,6 +94,15 @@ export default class LoginClient{
       },
     });
   }
+  async getUserName(userId: string, authToken: string): Promise<Response> {
+    return this.request({
+      method: "GET",
+      url: `/users/${userId}/username`,
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+  }
 
   async refresh(refreshToken: string): Promise<Response> {
   return this.request({
