@@ -24,8 +24,6 @@ def get_db():
 
 @router.post("")
 def create_user_route(user: UserCreate, db: Session = Depends(get_db)):
-    if user.password != user.confirm_password:
-        raise HTTPException(status_code=400, detail="Passwords do not match")
     
     if len(user.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
