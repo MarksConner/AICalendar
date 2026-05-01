@@ -279,12 +279,73 @@ def _message_has_explicit_clock_time(message: str | None) -> bool:
     return bool(re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(am|pm)\b", normalized) or re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", normalized))
 
 
+def _parse_clock_time(hour_text: str, minute_text: str | None = None, meridiem: str | None = None) -> tuple[int, int]:
+    hour = int(hour_text)
+    minute = int(minute_text or 0)
+    normalized_meridiem = (meridiem or "").lower()
+    if normalized_meridiem == "pm" and hour != 12:
+        hour += 12
+    if normalized_meridiem == "am" and hour == 12:
+        hour = 0
+    return hour, minute
+
+
+def _parse_explicit_target_date(normalized: str, reference: datetime) -> date | None:
+    import re
+
+    month_map = {
+        "jan": 1, "january": 1,
+        "feb": 2, "february": 2,
+        "mar": 3, "march": 3,
+        "apr": 4, "april": 4,
+        "may": 5,
+        "jun": 6, "june": 6,
+        "jul": 7, "july": 7,
+        "aug": 8, "august": 8,
+        "sep": 9, "sept": 9, "september": 9,
+        "oct": 10, "october": 10,
+        "nov": 11, "november": 11,
+        "dec": 12, "december": 12,
+    }
+
+    patterns = [
+        r"\b(?:on\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?\s+([a-z]+)\b",
+        r"\b([a-z]+)\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\b",
+    ]
+
+    for pattern in patterns:
+        for match in re.finditer(pattern, normalized):
+            if match.group(1).isdigit():
+                day = int(match.group(1))
+                month = month_map.get(match.group(2))
+            else:
+                month = month_map.get(match.group(1))
+                day = int(match.group(2))
+
+            if not month:
+                continue
+
+            try:
+                target = date(reference.year, month, day)
+            except ValueError:
+                continue
+
+            if target < reference.date():
+                try:
+                    target = date(reference.year + 1, month, day)
+                except ValueError:
+                    continue
+            return target
+
+    return None
+
+
 def _parse_inline_time_details(message: str | None, current_time: dict | None = None) -> dict[str, Any]:
     normalized = (message or "").lower()
     reference = _coerce_datetime((current_time or {}).get("user_current_datetime")) or datetime.now()
     reference = reference.replace(tzinfo=None)
 
-    target_date = reference.date()
+    target_date = _parse_explicit_target_date(normalized, reference) or reference.date()
     if "day after tomorrow" in normalized:
         target_date = reference.date() + timedelta(days=2)
     elif "tomorrow" in normalized:
@@ -296,15 +357,26 @@ def _parse_inline_time_details(message: str | None, current_time: dict | None = 
     minute = 0
 
     import re
+    range_match = re.search(
+        r"\bfrom\s+(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(am|pm)\s+to\s+(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(am|pm)\b",
+        normalized,
+    )
+    if range_match:
+        start_hour, start_minute = _parse_clock_time(range_match.group(1), range_match.group(2), range_match.group(3))
+        end_hour, end_minute = _parse_clock_time(range_match.group(4), range_match.group(5), range_match.group(6))
+        start_dt = datetime.combine(target_date, datetime.min.time()).replace(hour=start_hour, minute=start_minute)
+        end_dt = datetime.combine(target_date, datetime.min.time()).replace(hour=end_hour, minute=end_minute)
+        if end_dt <= start_dt:
+            end_dt += timedelta(days=1)
+        return {
+            "start_time": start_dt.isoformat(),
+            "end_time": end_dt.isoformat(),
+            "duration_minutes": int((end_dt - start_dt).total_seconds() / 60),
+        }
+
     match = re.search(r"\b(1[0-2]|0?[1-9])(?::([0-5][0-9]))?\s*(am|pm)\b", normalized)
     if match:
-        hour = int(match.group(1))
-        minute = int(match.group(2) or 0)
-        meridiem = match.group(3)
-        if meridiem == "pm" and hour != 12:
-            hour += 12
-        if meridiem == "am" and hour == 12:
-            hour = 0
+        hour, minute = _parse_clock_time(match.group(1), match.group(2), match.group(3))
     else:
         match24 = re.search(r"\b([01]?\d|2[0-3]):([0-5]\d)\b", normalized)
         if match24:
@@ -328,6 +400,54 @@ def _parse_inline_time_details(message: str | None, current_time: dict | None = 
         "start_time": start_dt.isoformat(),
         "end_time": end_dt.isoformat(),
         "duration_minutes": 60,
+    }
+
+
+def _try_build_simple_add_event_action(message: str | None, current_time: dict | None = None) -> dict[str, Any] | None:
+    normalized = (message or "").strip()
+    if not normalized or not _message_has_explicit_clock_time(normalized):
+        return None
+
+    lowered = normalized.lower()
+    if not any(word in lowered for word in ["schedule", "add", "put"]):
+        return None
+
+    if any(word in lowered for word in ["delete", "remove", "update", "change", "move", "traffic", "directions", "suggest"]):
+        return None
+
+    parsed_time = _parse_inline_time_details(normalized, current_time)
+    if not parsed_time.get("start_time"):
+        return None
+
+    import re
+    title_match = re.search(r"\b(?:schedule|add|put)\b(?:\s+(?:an?|the))?\s+(.+)", normalized, re.IGNORECASE)
+    if not title_match:
+        return None
+
+    title = title_match.group(1).strip()
+    title = re.split(
+        r"\s+(?:for|on|at)\b|\s+\b(?:today|tomorrow|day after tomorrow)\b",
+        title,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0].strip(" .?!")
+
+    if title.lower().startswith("it "):
+        return None
+
+    title = title or "Untitled Event"
+    if title.isdigit():
+        return None
+
+    return {
+        "intent": "add_event",
+        "title": title,
+        "start_time": parsed_time.get("start_time"),
+        "end_time": parsed_time.get("end_time"),
+        "duration_minutes": parsed_time.get("duration_minutes") or 60,
+        "location": None,
+        "priority_rank": 0,
+        "recurring": False,
     }
 
 
@@ -743,17 +863,25 @@ def chat(data: UserMessage):
                 "intent": "clarify",
                 "message": "I still need a specific start time like 2am or 10:30am for the first event.",
             }]
-    elif _is_followup_to_local_suggestion(data.message, chat_context) and _looks_like_suggestion_add_request(data.message):
+    elif (
+        (
+            _is_followup_to_local_suggestion(data.message, chat_context)
+            or (data.chat_id and RECENT_SUGGESTIONS_BY_CHAT.get(str(data.chat_id)))
+        )
+        and _looks_like_suggestion_add_request(data.message)
+    ):
         forced_actions = [{
             "intent": "add_suggested_event",
             "selection": _selection_from_message(data.message),
             **_parse_inline_time_details(data.message, data.current_time),
         }]
+    else:
+        simple_add_event = _try_build_simple_add_event_action(data.message, data.current_time)
+        if simple_add_event:
+            forced_actions = [simple_add_event]
 
     # no DB session held during LLM call
     llm_output = None if forced_actions is not None else ask_llm(data.message,calendar_context=calendar_context,chat_context=chat_context, current_time = data.current_time)
-    print("RAW LLM OUTPUT:", llm_output, flush=True)
-
     if forced_actions is not None:
         actions = forced_actions
     else:
@@ -808,9 +936,6 @@ def chat(data: UserMessage):
         for action in actions:
             intent = action.get("intent", "unknown")
         
-            print("INTENT:", intent, flush=True)
-            print("ACTION:", action, flush=True)
-            
             if intent == "chat":
                 results.append({
                     "response": action.get("response", "Hello! How can I help you?"),
@@ -877,14 +1002,9 @@ def chat(data: UserMessage):
                     # non-recurring after that
                     start = action.get("start_time")
                     end = action.get("end_time")
-                    
-                    print(start)
-                    print(end)
-
-
-                    if start and end:
+                    if start:
                         start_dt = Schedule.parse_datetime(start)
-                        end_dt = Schedule.parse_datetime(end)
+                        end_dt = Schedule.parse_datetime(end) if end else start_dt + timedelta(minutes=duration)
                     else:
                         earliest = action.get("earliest_start")
                         latest = action.get("latest_end")

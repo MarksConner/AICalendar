@@ -52,7 +52,7 @@ def login_route(user: UserLogin, db: Session = Depends(get_db)):
 
     db_user = get_user_by_email(db, user.email)
     token = create_access_token({"sub": db_user.email, "user_id": str(db_user.user_id)})
-    refresh_token = create_refresh_token({ "user_id": str(db_user.user_id)})
+    refresh_token = create_refresh_token(str(db_user.user_id))
     
     return {"access_token": token, "refresh_token": refresh_token, "user_id": db_user.user_id, "token_type": "bearer"}
 
@@ -143,11 +143,19 @@ def get_user_by_id_route(user_id: UUID, db: Session = Depends(get_db)):
 
 # users/refresh full path 
 @router.post("/refresh")
-def refresh_route(payload: RefreshRequest):
+def refresh_route(payload: RefreshRequest, db: Session = Depends(get_db)):
     try:
         decoded = check_refresh_token_expiration(payload.refresh_token)
-        user_id = decoded["sub"]
-        new_access_token = create_access_token(user_id)
+        token_subject = decoded["sub"]
+        user_id = token_subject.get("user_id") if isinstance(token_subject, dict) else token_subject
+        db_user = get_user_by_user_id(db, UUID(str(user_id)))
+        if db_user is None:
+            raise ValueError("USER_NOT_FOUND")
+
+        new_access_token = create_access_token({
+            "sub": db_user.email,
+            "user_id": str(db_user.user_id),
+        })
         return {
             "access_token": new_access_token,
             "token_type": "bearer",

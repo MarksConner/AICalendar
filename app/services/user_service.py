@@ -7,9 +7,11 @@ from app.models.refresh_token import RefreshToken
 import hashlib
 import uuid
 import jwt 
+import os
 
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
+ACCESS_TOKEN_MINUTES = int(os.getenv("ACCESS_TOKEN_MINUTES", "60"))
 
 def create_user(session: Session, email: str, username: str, first_name: str, last_name: str, password: str) -> Users:
 
@@ -147,7 +149,7 @@ def reset_password_token(db: Session, email:str, token: str, new_password: str) 
 #Create access token. Data is a dict with email, user_id and a expiration date.
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

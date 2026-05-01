@@ -144,12 +144,76 @@ def format_events_for_llm(events: List[EventForSuggestion]) -> str:
     return "\n".join(lines)
 
 
+def _parse_user_minutes(current_time: Optional[dict[str, Any]]) -> Optional[int]:
+    if not current_time:
+        return None
+
+    raw_minutes = current_time.get("user_current_minutes")
+    if isinstance(raw_minutes, int):
+        return raw_minutes
+    if isinstance(raw_minutes, str) and raw_minutes.isdigit():
+        return int(raw_minutes)
+
+    raw_datetime = current_time.get("user_current_datetime") or current_time.get("user_current_time")
+    if not isinstance(raw_datetime, str):
+        return None
+
+    try:
+        parsed = raw_datetime.split("GMT", 1)[0].strip()
+        from datetime import datetime
+        dt = datetime.strptime(parsed, "%a %b %d %Y %H:%M:%S")
+        return dt.hour * 60 + dt.minute
+    except Exception:
+        return None
+
+
+def _event_start_minutes(event: EventForSuggestion) -> Optional[int]:
+    start = event.get_start()
+    if not start:
+        return None
+
+    try:
+        time_part = start.split("T", 1)[1] if "T" in start else start
+        hour = int(time_part[0:2])
+        minute = int(time_part[3:5])
+        return hour * 60 + minute
+    except Exception:
+        return None
+
+
+def event_is_upcoming(event: EventForSuggestion, current_time: Optional[dict[str, Any]] = None) -> bool:
+    user_current_minutes = _parse_user_minutes(current_time)
+    event_minutes = _event_start_minutes(event)
+
+    if user_current_minutes is None or event_minutes is None:
+        return True
+
+    return event_minutes > user_current_minutes
+
+
+def event_has_travel_context(event: EventForSuggestion) -> bool:
+    return bool(event.get_location() or event.get_distance())
+
+
+def filter_upcoming_events(events: List[EventForSuggestion], current_time: Optional[dict[str, Any]] = None) -> List[EventForSuggestion]:
+    return [event for event in events if event_is_upcoming(event, current_time)]
+
+
+def filter_upcoming_travel_events(events: List[EventForSuggestion], current_time: Optional[dict[str, Any]] = None) -> List[EventForSuggestion]:
+    return [
+        event
+        for event in events
+        if event_is_upcoming(event, current_time) and event_has_travel_context(event)
+    ]
+
+
 def generate_prompt(date: str,events: List[EventForSuggestion],current_time: Optional[dict[str, Any]] = None) -> str:
     current_time = current_time or {}
     user_current_time = (current_time.get("user_current_datetime")or current_time.get("user_current_time")or "Unknown")
     user_timezone = current_time.get("user_timezone") or "Unknown"
     next_upcoming_event_name = get_next_upcoming_event_name(events, current_time)
-    print(user_current_time)
+    upcoming_events = filter_upcoming_events(events, current_time)
+    upcoming_travel_events = filter_upcoming_travel_events(events, current_time)
 
     return f"""
 You are generating AI day hints for ONE selected calendar day only.
@@ -166,7 +230,10 @@ User timezone:
 {user_timezone}
 
 Events for this selected day only:
-{format_events_for_llm(events)}
+{format_events_for_llm(upcoming_events)}
+
+Upcoming events with location or travel context:
+{format_events_for_llm(upcoming_travel_events)}
 
 Return ONLY a valid JSON array with EXACTLY 3 objects.
 
@@ -197,8 +264,10 @@ The 3 objects must be:
 
 3. Travel card
 - category must be "Travel"
+- Use ONLY events listed under "Upcoming events with location or travel context".
+- Never mention travel for an event that has already started or already occurred.
 - Mention travel time or travel preparation if location/travel time exists.
-- If no travel time exists, give a general location/travel reminder.
+- If no upcoming event has travel/location context, say there are no upcoming location-based travel reminders.
 - Include distance_from_user if available.
 - Do NOT include participants_summary.
 
@@ -308,9 +377,39 @@ def parse_llm_response(llm_output: str) -> List[SuggestionItem]:
 
     return suggestions
 
+
+def sanitize_suggestions_for_time(
+    suggestions: List[SuggestionItem],
+    events: List[EventForSuggestion],
+    current_time: Optional[dict[str, Any]] = None,
+) -> List[SuggestionItem]:
+    event_by_title = {event.get_title().strip().lower(): event for event in events}
+    upcoming_travel_events = filter_upcoming_travel_events(events, current_time)
+
+    for suggestion in suggestions:
+        if (suggestion.category or "").lower() != "travel":
+            continue
+
+        event_name = (suggestion.event_name or "").strip().lower()
+        referenced_event = event_by_title.get(event_name)
+
+        if referenced_event and not event_is_upcoming(referenced_event, current_time):
+            suggestion.event_name = None
+            suggestion.distance_from_user = None
+            suggestion.description = "No upcoming location-based travel reminders remain for this day."
+            suggestion.reminder = None
+            continue
+
+        if not upcoming_travel_events:
+            suggestion.event_name = None
+            suggestion.distance_from_user = None
+            suggestion.description = "No upcoming location-based travel reminders remain for this day."
+            suggestion.reminder = None
+
+    return suggestions
+
 def get_next_upcoming_event_name(events: List[EventForSuggestion],current_time: Optional[dict[str, Any]] = None) -> Optional[str]:
-    current_time = current_time or {}
-    user_current_minutes = current_time.get("user_current_minutes")
+    user_current_minutes = _parse_user_minutes(current_time)
 
     if user_current_minutes is None:
         return None
@@ -318,20 +417,12 @@ def get_next_upcoming_event_name(events: List[EventForSuggestion],current_time: 
     upcoming_events = []
 
     for event in events:
-        start = event.get_start()
-        if not start:
+        event_minutes = _event_start_minutes(event)
+        if event_minutes is None:
             continue
 
-        try:
-            event_time = start.split("T")[1]
-            hour = int(event_time[0:2])
-            minute = int(event_time[3:5])
-            event_minutes = hour * 60 + minute
-
-            if event_minutes > user_current_minutes:
-                upcoming_events.append((event_minutes, event.get_title()))
-        except Exception:
-            continue
+        if event_minutes > user_current_minutes:
+            upcoming_events.append((event_minutes, event.get_title()))
 
     if not upcoming_events:
         return None

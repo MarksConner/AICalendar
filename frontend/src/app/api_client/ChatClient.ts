@@ -1,5 +1,6 @@
 import { buildUserTimezoneAndTimeObject } from "../Pages/TodaysPlan/dayPlannerUtils";
 import { handleSessionTimeout } from "../services/auth/sessionTimeout";
+import { tryRefreshAccessToken } from "../services/adapters/http/httpClient";
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
 type RequestOptions = {
@@ -18,20 +19,25 @@ export default class ChatClient {
   }
 
   async request(options: RequestOptions): Promise<Response> {
-    const token = localStorage.getItem("access_token");
-
-    const response = await fetch(this.base_url + options.url, {
+    const doFetch = (accessToken = localStorage.getItem("access_token")) => fetch(this.base_url + options.url, {
       method: options.method,
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(options.headers || {}),
       },
       body: options.body ? JSON.stringify(options.body) : null,
     });
 
+    let response = await doFetch();
+
     if (response.status === 401) {
-      handleSessionTimeout();
+      const newAccessToken = await tryRefreshAccessToken();
+      if (newAccessToken) {
+        response = await doFetch(newAccessToken);
+      } else {
+        handleSessionTimeout();
+      }
     }
 
     return response;

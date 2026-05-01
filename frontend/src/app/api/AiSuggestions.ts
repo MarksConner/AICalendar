@@ -65,6 +65,15 @@ const getTravelTimeForItem = async (item: DailyTimelineItem,coords: UserCoords |
   if (!coords) return null;
   if (!item.id) return null;
 
+  const anyItem = item as any;
+  const location =
+    anyItem.full_address ??
+    item.location ??
+    anyItem.address ??
+    null;
+
+  if (typeof location !== "string" || location.trim().length === 0) return null;
+
   try {
     const raw = await requestJson<TravelTimeResponse>(
       `/events/event_id/${item.id}/travel_time?from_lat=${coords.latitude}&from_long=${coords.longitude}`
@@ -80,6 +89,13 @@ const enrichItemsWithTravelTime = async (
   items: DailyTimelineItem[]
 ): Promise<DailyTimelineItem[]> => {
   if (!items.length) return [];
+  if (!items.some((item) => {
+    const anyItem = item as any;
+    const location = anyItem.full_address ?? item.location ?? anyItem.address ?? null;
+    return typeof location === "string" && location.trim().length > 0;
+  })) {
+    return items;
+  }
 
   const coords = await getUserCoords();
 
@@ -154,8 +170,6 @@ export async function getDayAiSuggestions(
     events: enrichedItems.map(mapTimelineItemToAiEvent),
     current_time: buildUserTimezoneAndTimeObject(),
   };
-
-  console.log("AI suggestion body:", body);
 
   return requestJson<AiSuggestionsResponse>("/ai/day-suggestions", {
     method: "POST",

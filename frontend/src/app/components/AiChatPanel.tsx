@@ -218,6 +218,7 @@ export const AiChatPanel = () => {
       console.log("AiChatPanel calendarId for askAI:", calendarId);
 
       let currentChatId = chatId || localStorage.getItem(CHAT_ID_KEY);
+      let shouldPersistUserMessage = Boolean(currentChatId);
 
       if (!currentChatId) {
         const createResponse = await chatClient.createChatAPI(trimmed);
@@ -253,27 +254,6 @@ export const AiChatPanel = () => {
 
         localStorage.setItem(CHAT_ID_KEY, currentChatId);
         setChatId(currentChatId);
-      } else {
-        const sendResponse = await chatClient.sendMessageAPI(
-          currentChatId,
-          trimmed,
-          true
-        );
-
-        if (!sendResponse.ok) {
-          let details = "Failed to send message.";
-          try {
-            const errorData = await sendResponse.json();
-            details = getAssistantTextFromPayload(errorData) || details;
-          } catch {
-            // ignore parse issues
-          }
-          addAssistantMessage(details);
-          return;
-        }
-
-        const sendData = await sendResponse.json();
-        console.log("sendMessageAPI data:", sendData);
       }
 
       const aiResponse = await chatClient.askAI(trimmed, calendarId ?? null, currentChatId ?? null, geolocation.lat, geolocation.lng);
@@ -286,27 +266,37 @@ export const AiChatPanel = () => {
         } catch {
           // ignore parse issues
         }
+        if (currentChatId && shouldPersistUserMessage) {
+          void chatClient.sendMessageAPI(currentChatId, trimmed, true);
+        }
         addAssistantMessage(details);
         return;
       }
 
       const aiData = await aiResponse.json();
-      console.log("askAI data:", aiData);
-      refreshEvents();
 
       const assistantText = getAssistantTextFromPayload(aiData);
       addAssistantMessage(assistantText);
+      window.setTimeout(refreshEvents, 0);
 
       if (currentChatId) {
-        const saveAssistantResponse = await chatClient.sendMessageAPI(
-          currentChatId,
-          assistantText,
-          false
-        );
+        void (async () => {
+          try {
+            if (shouldPersistUserMessage) {
+              const saveUserResponse = await chatClient.sendMessageAPI(currentChatId, trimmed, true);
+              if (!saveUserResponse.ok) {
+                console.error("Failed to persist user message.");
+              }
+            }
 
-        if (!saveAssistantResponse.ok) {
-          console.error("Failed to persist assistant message.");
-        }
+            const saveAssistantResponse = await chatClient.sendMessageAPI(currentChatId, assistantText, false);
+            if (!saveAssistantResponse.ok) {
+              console.error("Failed to persist assistant message.");
+            }
+          } catch (error) {
+            console.error("Failed to persist chat messages.", error);
+          }
+        })();
       }
     } catch (error) {
       console.error(error);

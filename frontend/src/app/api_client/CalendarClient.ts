@@ -1,5 +1,6 @@
 import type { CreateEventFormData } from "../components/CreateEventDialog";
 import { handleSessionTimeout } from "../services/auth/sessionTimeout";
+import { tryRefreshAccessToken } from "../services/adapters/http/httpClient";
 
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
@@ -19,19 +20,25 @@ export default class CalendarClient {
     }
 
     async request(options: RequestOptions): Promise<Response> {
-        const token = localStorage.getItem("access_token");
-        const response = await fetch(this.base_url + options.url, {
+        const doFetch = (accessToken = localStorage.getItem("access_token")) => fetch(this.base_url + options.url, {
             method: options.method,
             headers: {
                 "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
                 ...(options.headers || {}),
             },
             body: options.body ? JSON.stringify(options.body) : null,
         });
 
+        let response = await doFetch();
+
         if (response.status === 401) {
-            handleSessionTimeout();
+            const newAccessToken = await tryRefreshAccessToken();
+            if (newAccessToken) {
+                response = await doFetch(newAccessToken);
+            } else {
+                handleSessionTimeout();
+            }
         }
 
         return response;
@@ -46,20 +53,27 @@ export default class CalendarClient {
     }
 
     async createCalendarICSAPI(calendarName: string, icsFile: File): Promise<Response> {
-        const token = localStorage.getItem("access_token");
         const formData = new FormData();
         formData.append("calendarName", calendarName);
         formData.append("icsFile", icsFile);
-        const response = await fetch(this.base_url + "/calendar/import-ics", {
+
+        const doFetch = (accessToken = localStorage.getItem("access_token")) => fetch(this.base_url + "/calendar/import-ics", {
             method: "POST",
             headers: {
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
             },
             body: formData,
         });
 
+        let response = await doFetch();
+
         if (response.status === 401) {
-            handleSessionTimeout();
+            const newAccessToken = await tryRefreshAccessToken();
+            if (newAccessToken) {
+                response = await doFetch(newAccessToken);
+            } else {
+                handleSessionTimeout();
+            }
         }
 
         return response;
@@ -104,7 +118,6 @@ export default class CalendarClient {
 // Takes a file object, calendar name, user id, and optional date range, and sends a POST request to the backend to import events from the ICS file into the specified calendar.   
     async ics_import({file, calendar_name, user_id,date_start, date_end,}: {file: File; calendar_name: string; user_id: string; date_start?: string | null;date_end?: string | null;
     }): Promise<Response> {
-    const token = localStorage.getItem("access_token");
     const formData = new FormData();
 
     formData.append("file", file); // backend expects "file"
@@ -119,16 +132,23 @@ export default class CalendarClient {
         formData.append("date_end", date_end);
     }
 
-    const response = await fetch(this.base_url + "/calendar/import-ics", {
+    const doFetch = (accessToken = localStorage.getItem("access_token")) => fetch(this.base_url + "/calendar/import-ics", {
         method: "POST",
         headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: formData,
     });
 
+    let response = await doFetch();
+
     if (response.status === 401) {
-        handleSessionTimeout();
+        const newAccessToken = await tryRefreshAccessToken();
+        if (newAccessToken) {
+            response = await doFetch(newAccessToken);
+        } else {
+            handleSessionTimeout();
+        }
     }
 
     return response;

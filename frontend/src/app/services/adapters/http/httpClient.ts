@@ -72,7 +72,21 @@ function getStoredRefreshToken() {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem("refresh_token");
 }
+
+let refreshInFlight: Promise<string | null> | null = null;
+
 export async function tryRefreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = refreshAccessToken();
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = getStoredRefreshToken();
   if (!refreshToken) return null;
 
@@ -103,6 +117,7 @@ export async function tryRefreshAccessToken(): Promise<string | null> {
     return null;
   }
 }
+
 export async function requestJson<T>(
   path: string,
   options: RequestJsonOptions = {}

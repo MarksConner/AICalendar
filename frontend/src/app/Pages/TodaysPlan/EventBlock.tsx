@@ -40,6 +40,9 @@ export function EventBlock({
     <ButtonBase
       type="button"
       onClick={onOpen}
+      onPointerDown={(event) => {
+        if (!isSaving) onStartInteraction(event, item, "move");
+      }}
       disabled={isSaving}
       sx={{
         position: "absolute",
@@ -62,8 +65,28 @@ export function EventBlock({
         opacity: isSaving ? 0.7 : 1,
         boxShadow: isInteracting ? "0 0 0 2px rgba(90, 133, 226, 0.45)" : "none",
         transition: "box-shadow 120ms ease, opacity 120ms ease",
+        cursor: isSaving ? "not-allowed" : isInteracting ? "grabbing" : "grab",
+        touchAction: "none",
       }}
     >
+      <Box
+        role="button"
+        aria-label="Resize event start"
+        onPointerDown={(event) => onStartInteraction(event, item, "resize-start")}
+        sx={{
+          position: "absolute",
+          left: 6,
+          right: 6,
+          top: 2,
+          height: 8,
+          borderBottom: "2px solid",
+          borderColor: tone.borderColor,
+          opacity: 0.55,
+          cursor: isSaving ? "not-allowed" : "ns-resize",
+          pointerEvents: "auto",
+          touchAction: "none",
+        }}
+      />
       <Box sx={{ minWidth: 0, width: "100%" }}>
         <Box
           sx={{
@@ -76,22 +99,6 @@ export function EventBlock({
           <Typography variant="caption" sx={{ fontWeight: 600 }}>
             {extractTimeHHMM(item.start)} – {extractTimeHHMM(item.end)}
           </Typography>
-          <Box
-            role="button"
-            aria-label="Move event"
-            onPointerDown={(event) => onStartInteraction(event, item, "move")}
-            sx={{
-              width: 22,
-              height: 14,
-              borderRadius: 999,
-              border: "1px dashed",
-              borderColor: tone.borderColor,
-              opacity: 0.65,
-              cursor: isSaving ? "not-allowed" : "grab",
-              pointerEvents: "auto",
-              flexShrink: 0,
-            }}
-          />
         </Box>
         <Typography
           variant="body2"
@@ -128,8 +135,8 @@ export function EventBlock({
       </Box>
       <Box
         role="button"
-        aria-label="Resize event"
-        onPointerDown={(event) => onStartInteraction(event, item, "resize")}
+        aria-label="Resize event end"
+        onPointerDown={(event) => onStartInteraction(event, item, "resize-end")}
         sx={{
           position: "absolute",
           left: 6,
@@ -141,6 +148,7 @@ export function EventBlock({
           opacity: 0.55,
           cursor: isSaving ? "not-allowed" : "ns-resize",
           pointerEvents: "auto",
+          touchAction: "none",
         }}
       />
     </ButtonBase>

@@ -21,7 +21,7 @@ export type EventTimeDraft = {
   end: string;   // HH:MM
 };
 
-export type InteractionMode = "move" | "resize";
+export type InteractionMode = "move" | "resize-start" | "resize-end";
 
 export type EventInteractionState = {
   eventId: string;

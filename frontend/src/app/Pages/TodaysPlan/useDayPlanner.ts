@@ -279,10 +279,12 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     ) => {
       if (selectedView !== "day" || savingEventIds.includes(item.id)) return;
 
-      event.preventDefault();
+      if (mode !== "move") {
+        event.preventDefault();
+      }
       event.stopPropagation();
       setPersistError(null);
-      suppressOpenRef.current = true;
+      suppressOpenRef.current = mode !== "move";
 
       setInteractionState({
         eventId: item.id,
@@ -302,6 +304,10 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       const deltaMinutes = roundMinutesToStep(
         ((event.clientY - interactionState.pointerStartY) / HOUR_ROW_HEIGHT) * 60
       );
+      if (deltaMinutes !== 0) {
+        suppressOpenRef.current = true;
+      }
+
       const maxMinutes = HOURS_IN_DAY * 60;
 
       let nextStart = interactionState.initialStartMinutes;
@@ -315,6 +321,10 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
         const movedStart = interactionState.initialStartMinutes + deltaMinutes;
         nextStart = Math.max(0, Math.min(movedStart, maxMinutes - duration));
         nextEnd = nextStart + duration;
+      } else if (interactionState.mode === "resize-start") {
+        const resizedStart = interactionState.initialStartMinutes + deltaMinutes;
+        const maxStart = interactionState.initialEndMinutes - MIN_DURATION_MINUTES;
+        nextStart = Math.max(0, Math.min(resizedStart, maxStart));
       } else {
         const resizedEnd = interactionState.initialEndMinutes + deltaMinutes;
         const minEnd = interactionState.initialStartMinutes + MIN_DURATION_MINUTES;

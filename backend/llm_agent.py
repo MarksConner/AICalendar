@@ -16,6 +16,9 @@ except Exception:
     pass
 
 
+OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4.1-mini")
+OPENAI_SUMMARY_MODEL = os.getenv("OPENAI_SUMMARY_MODEL", OPENAI_CHAT_MODEL)
+
 
 
 def ask_llm(message: str, * ,calendar_context: Optional[Dict[str, Any]] = None, chat_context: Optional[Dict[str, Any]] = None, current_time: Optional[Dict[str, Any]] = None,) -> str:
@@ -349,8 +352,10 @@ Respond ONLY with valid JSON.
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_CHAT_MODEL,
             temperature=0.2,  # lower temp for structured output
+            response_format={"type": "json_object"},
+            max_tokens=1200,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": message},
@@ -412,8 +417,9 @@ Allowed categories:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_CHAT_MODEL,
             temperature=0.2,
+            max_tokens=700,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
@@ -445,8 +451,9 @@ def llm_summarize_chat_history(chat_history: list[Dict[str, Any]]) -> str:
             return "OPENAI_API_KEY is not set"
         client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=OPENAI_SUMMARY_MODEL,
             temperature=0.2,
+            max_tokens=300,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": json.dumps(chat_history)},
