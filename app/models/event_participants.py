@@ -1,3 +1,6 @@
+# Events_Participants Model
+# Defines an ORM model that maps the event_participants table in the database to a Python class.
+# Written by: Luis Matheus Perdomo
 from sqlalchemy import Column, String, Text, TIMESTAMP
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
