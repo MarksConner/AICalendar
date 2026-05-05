@@ -1,3 +1,8 @@
+#User's and auth api routes
+# Handles user creation, authentication, refresh token logic and email verifaction.
+# Written by: Luis Matheus Perdomo and Conner (refresh token part)
+
+#Inherits all users FR's + FR3 (logout with refresh tokens)
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from app.api.base_model_classes import RefreshRequest, UserCreate, UserLogin,UserEmailVerify, UserResponse, UserUpdatePassword
