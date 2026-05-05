@@ -1,8 +1,14 @@
 
+# Parses ics file completely .
+# Parses a calendar  by returning an list of dict events. 
+# Written by: Luis Matheus Perdomo
+
+# UC7 and FR7
 from typing import List, Dict, Any, Optional
 from icalendar import Calendar
 from datetime import date, datetime
 
+# Loops throuugh ics file and checks for neccessary attributes that matches our events fields and appends it into a list of events dictionary.
 def parse_ics(ics_content: str) -> List[Dict[str, Any]]:
     cal = Calendar.from_ical(ics_content)
     events = []
