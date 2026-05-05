@@ -1,4 +1,15 @@
 
+# Events Service 
+# Defines events creation, deletion, modifications, and retrieval in the database. 
+# Written by: Luis Matheus Perdomo
+
+# Functional Requirements
+# FR7: We use create event to populate own calendar.
+# FR8: Allows for user manipulation of calendars using update, remove events, and find information about calendars (multiple functions).
+# FR11/19/20: Multiple functions in this file allow the retrieval of information from events.
+# FR15: Multiple function check for conflict as a last resort check.
+# FR28/29: Multiple functions at the end of the file handles bookable events.
+
 from app.db import SessionLocal
 from app.models.events import Events
 from app.models.event_participants import EventParticipants
@@ -9,7 +20,7 @@ from sqlalchemy.orm import Session
 from backend.mapbox import geocode
 import resend
 
-
+# Creates an event model and commits to the database. (Edgar added the geocode parts) 
 def create_event(db: Session, calendar_id: UUID, event_name: str, full_address: str, start_time:datetime, end_time: datetime, description: str, priority_rank: int) -> Events:
     geo_lat = None
     geo_long = None
@@ -18,12 +29,7 @@ def create_event(db: Session, calendar_id: UUID, event_name: str, full_address: 
         if coords:
             geo_lat, geo_long = coords
 
-    conflicts = detect_event_conflicts(
-        db=db,
-        calendar_id=calendar_id,
-        start_time=start_time,
-        end_time=end_time,
-    )
+    conflicts = detect_event_conflicts(db=db,calendar_id=calendar_id,start_time=start_time,end_time=end_time,)
     if conflicts:
         names = ", ".join([event.event_name for event in conflicts])
         raise ValueError(f"Time conflict with existing event(s): {names}")
@@ -43,6 +49,7 @@ def create_event(db: Session, calendar_id: UUID, event_name: str, full_address: 
     db.refresh(new_event)
     return new_event
 
+# Return a list of events for a given day (useful for the timeline view, scheduling hints) 
 def get_events_for_calendar_day(db: Session, calendar_id: UUID, day: datetime) -> list[Events]:
     start_of_day = datetime(day.year, day.month, day.day)
     end_of_day = datetime(day.year, day.month, day.day, 23, 59, 59)
@@ -50,7 +57,6 @@ def get_events_for_calendar_day(db: Session, calendar_id: UUID, day: datetime) -
     return events
 
 # new function to get events for a calendar month, used for calendar month view
-
 def get_events_for_calendar_month(db: Session,calendar_id: UUID,year: int,month: int) -> list[Events]:
     start_of_month = datetime(year, month, 1)
 
@@ -62,7 +68,8 @@ def get_events_for_calendar_month(db: Session,calendar_id: UUID,year: int,month:
     events = (db.query(Events).filter(Events.calendar_id == calendar_id).filter(Events.start_time < start_of_next_month).filter(Events.end_time > start_of_month).all())
 
     return events
-
+    
+# Modifies events in a calendar  
 def update_event(db: Session,event_id: UUID,event_name: str | None = None,start_time: datetime | None = None,end_time: datetime | None = None,priority_rank: int | None = None,description: str | None = None,
     full_address: str | None = None,
 ) -> bool:
@@ -143,14 +150,17 @@ async def remove_event(db: Session, event_id: UUID) -> bool:
     return True
 
 
+# Returns an event model by id. (should not return a database query response)
 def get_event_by_id(db: Session, event_id: UUID) -> Events | None:
-    """Return a single event or None."""
     return (db.query(Events).filter(Events.event_id == event_id).one_or_none())
 
+
+# Checks for event confilcts in the database, returns a list of conflicts. 
 def detect_event_conflicts(db: Session,calendar_id: UUID,start_time: datetime, end_time: datetime,) -> list[Events]:
     conflicts = (db.query(Events).filter(Events.calendar_id == calendar_id).filter(Events.start_time < end_time).filter(Events.end_time > start_time).all())
     return conflicts
 
+# Updates an event locaiton
 def update_event_location(db: Session, calendar_id: UUID, event_id: UUID, new_location: str) -> bool:
     event_to_update = (db.query(Events).filter(Events.calendar_id == calendar_id,Events.event_id == event_id).first())
 
@@ -204,7 +214,6 @@ def remove_event_participant(db: Session, event_id: UUID, participant_id: UUID) 
     return True
 
 # Remove participant. If an participant has not associations in EventParticipants it is removed.
-
 def remove_participant(db: Session, participant_id: UUID) -> bool:
     participant = (db.query(Participants).filter(Participants.participant_id == participant_id).one_or_none())
 
@@ -220,7 +229,7 @@ def remove_participant(db: Session, participant_id: UUID) -> bool:
     db.commit()
     return True
 
-
+# returns a list of particicapnts for an event
 def get_participants_for_event(db: Session, event_id: UUID) -> list[Participants]:
     event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
     if event is None:
@@ -230,10 +239,11 @@ def get_participants_for_event(db: Session, event_id: UUID) -> list[Participants
     return participants
 
 
+# Returns description of an participant
 def get_participant_details(db: Session, participant_id: UUID) -> Participants | None:
     return (db.query(Participants).filter(Participants.participant_id == participant_id).one_or_none())
 
-
+# Returns the address of an participant.
 def get_participant_location(db: Session, participant_id: UUID) -> str | None:
     participant = (db.query(Participants).filter(Participants.participant_id == participant_id).one_or_none())
 
@@ -262,6 +272,7 @@ def update_participant_info(db: Session,participant_id: UUID,name: str | None = 
     return participant
 
 
+# Checks if participant already has an event that overlaps. (Not used)
 def detect_participant_event_conflicts(db: Session,participant_id: UUID, start_time: datetime,end_time: datetime,exclude_event_id: UUID | None = None,) -> list[Events]:
     if start_time >= end_time:
         raise ValueError("start_time must be earlier than end_time")
@@ -273,11 +284,13 @@ def detect_participant_event_conflicts(db: Session,participant_id: UUID, start_t
 
     return query.all()
 
-
+# Changes the location of an participant
 def update_participant_location( db: Session,participant_id: UUID,new_location: str,) -> Participants:
     return update_participant_info(db=db,participant_id=participant_id,full_address=new_location,)
 
+# Booable events section
 
+# Set event as bookable
 def set_event_as_bookable(db: Session, event_id: UUID) -> Events:
     event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
 
@@ -292,11 +305,12 @@ def set_event_as_bookable(db: Session, event_id: UUID) -> Events:
     return event
 
 
+# Gives you a list of all the bookable events
 def get_bookable_events_for_calendar(db: Session, calendar_id: UUID) -> list[Events]:
     events = (db.query(Events).filter(Events.calendar_id == calendar_id).filter(Events.event_type == "bookable").filter(Events.is_booked == False).all())
     return events
 
-
+# Handles booking event loginc (adding participant, required checkes, and setting of priority to highest(
 def book_event(db: Session, event_id: UUID, name: str, email: str, notes: str | None = None) -> Events:
     event = db.query(Events).filter(Events.event_id == event_id).one_or_none()
 
@@ -335,13 +349,9 @@ def is_event_bookable(db: Session, event_id: UUID) -> bool:
 
 
 
-#Helper 
-
-async def send_email_to_booked_event_participant_canceling_event(
-    email: str,
-    name: str,
-    event_name: str,
-):
+#Helper
+# Uses resend to send email. The email explains the booked event has been deleted by the calendars owner.
+async def send_email_to_booked_event_participant_canceling_event(email: str,name: str,event_name: str,):
     params: resend.Emails.SendParams = {
         "from": "AgendaAI <onboarding@resend.dev>",
         "to": [email],
