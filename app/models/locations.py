@@ -1,4 +1,7 @@
-# Stores location current location of client or location of event
+# Locations Model
+# Defines an ORM model that maps the locations table in the database to a Python class.
+# Written by: Luis Matheus Perdomo
+
 from sqlalchemy import Column,INT, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
