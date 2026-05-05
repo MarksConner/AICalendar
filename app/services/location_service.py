@@ -1,3 +1,5 @@
+# Written by: Luis Matheus Perdomo (Not used)
+
 from app.db import SessionLocal
 from app.models.locations import Locations
 
