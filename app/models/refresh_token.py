@@ -1,3 +1,7 @@
+# Refresh Token Table (not used)
+# Defines an ORM model that maps the refresh token table in the database to a Python class.
+# Written by: Luis Matheus Perdomo
+
 from sqlalchemy import Column,Boolean, Text, TIMESTAMP, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import func
