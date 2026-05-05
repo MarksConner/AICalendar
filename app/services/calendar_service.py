@@ -1,3 +1,15 @@
+# Calendar Service 
+# Defines calendar creation, deletion, modifications, and inspection in the database. It also defines operations for bookable calendars. Finally, pulling calendar context and pulling day_hints context from the database. 
+# Written by: Luis Matheus Perdomo
+
+# Functional Requirements
+# FR6: We use get_calendar_context in order to send the AI agent the context it needs to perfom calendar operations.   
+# FR7: We use create_calendar to populate own calendar.
+# FR8: Allows for user manipulation of calendars using update, remove events, and find information about calendars (multiple functions).
+# FR11/19/20: Multiple functions in this file allow the retrieval of information from the calendar. 
+# FR16: By separating calendars by id we are able to create separation between calendars.
+# FR28/29: Multiple functions at the end of the file handles publishing a calendar.
+
 from typing import Optional
 from app.models.calendar import Calendar
 from app.models.events  import Events
@@ -10,20 +22,16 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import uuid
 
+# Creates calendar model and inserts it into the database
 def create_calendar(session: Session, calendar_name: str,user_id: UUID, date_start: Optional[datetime] = None, date_end:Optional[datetime] = None, icsfile: Optional[str] = None)->Calendar:
-    new_calendar = Calendar(    
-    calendar_name=calendar_name, 
-    date_start=date_start, 
-    date_end = date_end, 
-    user_id = user_id,
-    icsfile  = icsfile
-    )
+    new_calendar = Calendar(calendar_name=calendar_name, date_start=date_start, date_end = date_end, user_id = user_id,icsfile  = icsfile)
     session.add(new_calendar)
     session.commit()
     session.refresh(new_calendar)
 
     return new_calendar
 
+# Add an event model into a calendar in the database (by assigning a calendar_id to an event) (Deprecated- events_services handles the calendar creation)
 def add_event_to_calendar(session: Session,calendar_id: UUID, event_id:UUID):
     event = session.query(Events).filter(Events.event_id == event_id).first()
     if event is None:
@@ -34,6 +42,7 @@ def add_event_to_calendar(session: Session,calendar_id: UUID, event_id:UUID):
     session.refresh(event)
     return event
 
+# Removes an event from a calendar.
 def remove_event_from_calendar(session: Session,calendar_id: UUID, event_id: UUID)-> bool:
         
     event = session.query(Events).filter(Events.event_id == event_id).first()
@@ -43,7 +52,7 @@ def remove_event_from_calendar(session: Session,calendar_id: UUID, event_id: UUI
     session.delete(event)
     session.commit()
 
-#Careful! Only updates provided parameters 
+# Updates calendar fields using the given parameters, very flexible to allow for reusability. 
 def update_calendar(session: Session,calendar_id: UUID,calendar_name: str | None = None,  date_start: datetime | None = None, date_end: datetime | None = None,  icsfile: str | None = None,):
    
     calendar = (session.query(Calendar).filter(Calendar.calendar_id == calendar_id).first())
@@ -65,7 +74,7 @@ def update_calendar(session: Session,calendar_id: UUID,calendar_name: str | None
     return calendar
 
 
-#updat/replace calendar icsfile with new one
+# Updates calendar using ics file. (Not used (update calendar is used for this purpose))
 def update_calendar_icsfile(session: Session, calendar_id: UUID, icsfile: str)->bool:
     calendar = (session.query(Calendar).filter(Calendar.calendar_id == calendar_id).first())
     
@@ -77,16 +86,19 @@ def update_calendar_icsfile(session: Session, calendar_id: UUID, icsfile: str)->
     
     return False
 
+# Returns all events in a calendar
 def get_all_events_by_calendar_id(session: Session ,calendar_id: UUID)->list[Events]:
     events = session.query(Events).filter(Events.calendar_id == calendar_id).all()
     return events
 
+# Returns an specific event in a specifica calendar
 def get_event_by_calendar_id(session: Session ,calendar_id: UUID,event_id: UUID)->Events:
     event = session.query(Events).filter(Events.event_id ==event_id, Events.calendar_id == calendar_id).first()
     if event is None:
         raise ValueError("Event not found")
     return event
 
+# Deletes the given calendar 
 def delete_calendar_by_id(session: Session, calendar_id: UUID) -> bool:
     calendar = (session.query(Calendar).filter(Calendar.calendar_id == calendar_id).first())
     if calendar is None:
@@ -97,7 +109,7 @@ def delete_calendar_by_id(session: Session, calendar_id: UUID) -> bool:
 
     return True
 
-
+# Returns a list of all the calendars of a user in the database (used in the side panel to display all calendars)
 def get_calendars_by_user_id(session: Session, user_id: UUID) -> list[Calendar]:
     calendars = session.query(Calendar).filter(Calendar.user_id == user_id).all()
     return calendars
@@ -140,7 +152,7 @@ def get_calendar_context(session: Session, calendar_id: str) -> dict:
         ]
     }
 
-
+# Used to pull calendar context for the llm and returns a list of recomendations for reschdeuling. (not used in full)
 def day_scheduling_hints(db: Session,user_id: UUID,calendar_id: UUID,date: str,start_time: str,duration_minutes: int,end_time: str | None = None,):
 
     # Validate calendar exists and belongs to user
@@ -163,10 +175,7 @@ def day_scheduling_hints(db: Session,user_id: UUID,calendar_id: UUID,date: str,s
     # Validate start_time and end_time formats
     try:
         requested_start = datetime.fromisoformat(f"{date}T{start_time}:00")
-        requested_end = requested_start.replace(
-            hour=requested_start.hour,
-            minute=requested_start.minute
-        )
+        requested_end = requested_start.replace(hour=requested_start.hour,minute=requested_start.minute)
         requested_end = requested_start.fromisoformat(
             f"{date}T{end_time}:00"
         )
@@ -272,7 +281,7 @@ def day_scheduling_hints(db: Session,user_id: UUID,calendar_id: UUID,date: str,s
 
 #Bookable Calendar
 
-
+# Set public field of a calendar
 def set_calendar_as_public(db: Session, calendar_id: UUID) -> Calendar:
     calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
     if calendar is None:
@@ -288,7 +297,7 @@ def set_calendar_as_public(db: Session, calendar_id: UUID) -> Calendar:
 
     return calendar
 
-
+# Retrieves the calendar token.
 def get_calendar_token(db: Session, calendar_id: UUID):
     calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
     if calendar is None:
@@ -301,6 +310,7 @@ def get_calendar_token(db: Session, calendar_id: UUID):
 
     return calendar.public_token
 
+# Returns boolean is_public
 def get_if_calendar_is_public(db: Session, calendar_id: UUID) -> bool:
     calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
     if calendar is None:
@@ -308,6 +318,7 @@ def get_if_calendar_is_public(db: Session, calendar_id: UUID) -> bool:
 
     return calendar.is_public
 
+# Sets public boolean as false   
 def set_calendar_as_private(db: Session, calendar_id: UUID) -> Calendar:
     calendar = db.query(Calendar).filter(Calendar.calendar_id == calendar_id).first()
     if calendar is None:
@@ -320,25 +331,13 @@ def set_calendar_as_private(db: Session, calendar_id: UUID) -> Calendar:
 
     return calendar
 
-
+# using the public token returns an dict of the whole calendar fields (not used)
 def get_public_calendar_by_token(db: Session, public_token: UUID) -> dict:
-    calendar = (
-        db.query(Calendar)
-        .filter(Calendar.public_token == public_token)
-        .filter(Calendar.is_public == True)
-        .first()
-    )
-
+    calendar = (db.query(Calendar).filter(Calendar.public_token == public_token).filter(Calendar.is_public == True).first())
     if calendar is None:
         raise ValueError("Public calendar not found")
 
-    events = (
-        db.query(Events)
-        .filter(Events.calendar_id == calendar.calendar_id)
-        .filter(Events.event_type == "bookable")
-        .order_by(Events.start_time.asc())
-        .all()
-    )
+    events = (db.query(Events).filter(Events.calendar_id == calendar.calendar_id).filter(Events.event_type == "bookable").order_by(Events.start_time.asc()).all())
 
     return {
         "calendar_id": str(calendar.calendar_id),
