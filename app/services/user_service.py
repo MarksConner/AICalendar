@@ -1,3 +1,12 @@
+# User Service
+# Defines user creation, and neccessary verifications. Mostly authentication. 
+# Written by: Luis Matheus Perdomo
+
+# Functional Requirements
+# FR1: Allows user to create an login account.
+# FR2: Perfoms the necessary checks to allow the user to login
+# FR4: Allows the user to recover password.
+
 import bcrypt
 from app.db import SessionLocal
 from app.models.users import Users
@@ -13,6 +22,8 @@ SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_MINUTES = int(os.getenv("ACCESS_TOKEN_MINUTES", "60"))
 
+
+# Creates an user in the database
 def create_user(session: Session, email: str, username: str, first_name: str, last_name: str, password: str) -> Users:
 
     if len(password) <= 5  :
@@ -36,19 +47,19 @@ def create_user(session: Session, email: str, username: str, first_name: str, la
     session.refresh(new_user)
     return new_user
 
-
+# Retrieves an user by the given id
 def get_user_by_user_id(session: Session, user_id: uuid)-> Users:
 
     user = session.query(Users).filter(Users.user_id == user_id).first()
     return user
 
-
+# Returns a user by the given email
 def get_user_by_email(session: Session,email: str) -> Users:
 
     user = session.query(Users).filter(Users.email == email).first()
     return user
 
-
+#deletes an user by the given email
 def delete_user_by_email(session: Session, email: str) -> bool:
 
     user_to_delete = session.query(Users).filter(Users.email == "n").first()
