@@ -1,3 +1,5 @@
+# Hash passwords, verify passwords and get_current use helper
+# Written By: Luis Matheus Perdomo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 from pathlib import Path
@@ -66,6 +68,7 @@ class Settings(BaseSettings):
 Config = Settings()
 '''
 
+#This functions should be moved
 #Current User
 def get_db():
     db = SessionLocal()
