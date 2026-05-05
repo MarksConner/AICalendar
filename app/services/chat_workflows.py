@@ -1,3 +1,11 @@
+# Chat logic (not database oriented, but it has some database operations from chat service).
+# Defines how users communication with the AI agent will happen in conjuction with the database
+# Written by: Luis Matheus Perdomo
+
+# Functional Requirements
+# FR5: Allows user to chat by using the database object to display messages.
+# FR6: Allows AI agent to pull chat context to perfom operations
+
 from datetime import datetime, timedelta
 import uuid
 import json
@@ -10,12 +18,13 @@ from app.services.events_service import create_event
 from backend.llm_agent import ask_llm
 
 
+# Creates a chat (overlaps with create_chat_record)
 def create_chat_with_first_message(session, user_id, content):
     chat = chat_service.create_chat_record(session, user_id, content)
     session.commit()
     return chat
 
-
+# Handles the add event conversation logic. 
 def handle_chat_message(session: Session, calendar_id: str, message: str):
     calendar_context = get_calendar_context(session, calendar_id)
     llm_response_str = ask_llm(message, calendar_context=calendar_context)
@@ -28,6 +37,7 @@ def handle_chat_message(session: Session, calendar_id: str, message: str):
     return llm_response
 
 
+# When the AI agent parses intent as add_event this function parses for the fields in the database and creates event in the database
 def handle_add_event_intent(session: Session, calendar_id: str, llm_response: dict):
     title = llm_response.get("title")
     start_str = llm_response.get("datetime")
@@ -61,20 +71,6 @@ def handle_add_event_intent(session: Session, calendar_id: str, llm_response: di
 
     end_dt = start_dt + timedelta(minutes=duration_minutes)
 
-    created_event = create_event(
-        db=session,
-        calendar_id=calendar_uuid,
-        event_name=title,
-        full_address=location or "",
-        start_time=start_dt,
-        end_time=end_dt,
-        description="",
-        priority_rank=0,
-    )
+    created_event = create_event(db=session,calendar_id=calendar_uuid,event_name=title,full_address=location or "",start_time=start_dt,end_time=end_dt,description="",priority_rank=0,)
 
-    return {
-        "intent": "add_event",
-        "response": f"Created event '{title}'.",
-        "created": True,
-        "event_id": str(created_event.event_id)
-    }
+    return {"intent": "add_event","response": f"Created event '{title}'.","created": True,"event_id": str(created_event.event_id)}
