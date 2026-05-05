@@ -1,3 +1,8 @@
+# Calendars API'S
+# Routes that allow api_client + appDataService to connect to the database related operations in the calendars services. 
+# Written By: Luis Matheus Perdomo
+
+# Inherits all the FR's of calendars services.
 from datetime import datetime
 from hashlib import new
 from typing import Optional
