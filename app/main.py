@@ -1,3 +1,6 @@
+# FastAPI entrypoint and CORS configuration.
+#Written By: Luis Matheus Perdomo
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
