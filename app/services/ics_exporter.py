@@ -1,3 +1,8 @@
+# ICS exporting logic
+# Creates a ics file 
+# Written by: Luis Matheus Perdomo
+# UC6 and FR 7
+
 from icalendar import Calendar, Event
 from datetime import datetime
 from uuid import uuid4
@@ -5,14 +10,14 @@ from uuid import uuid4
 from app.services.calendar_service import get_calendar_context
 from app.db import SessionLocal
 
-
+# Uses calnedar_context to loop through event and converting it to a string which is in ics format.
 def export_calendar_to_ics(calendar_id: str) -> str:
     session = SessionLocal()
     try:
         calendar_context = get_calendar_context(session, calendar_id)
 
         ical = Calendar()
-        ical.add("prodid", "-//Your App//Calendar Export//EN")
+        ical.add("prodid", "-//Smart Calendar//Calendar Export//EN")
         ical.add("version", "2.0")
 
         for event_data in calendar_context["events"]:
