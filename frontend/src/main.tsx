@@ -1,3 +1,4 @@
+// main router file. Not counted to any FRs, used for compiling the app during runtime.
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";

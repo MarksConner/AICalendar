@@ -1,3 +1,6 @@
+/* This file handles helpers when adding a task that ensure repetitive names + conficting times
+Written by: Byron Billy
+FRs: Any that deal with daily grid + handling conflicts */
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";

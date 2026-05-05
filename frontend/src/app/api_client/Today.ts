@@ -1,3 +1,5 @@
+/* Mock daily timeline items for dev purposes
+Written by: Byron Billy */
 import type { DailyTimelineItem } from "../Types/Calendar";
 
 const MOCK_TODAY_ITEMS: DailyTimelineItem[] = [

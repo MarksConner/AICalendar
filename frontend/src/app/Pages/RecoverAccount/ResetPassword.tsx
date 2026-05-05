@@ -1,3 +1,6 @@
+/* Followup page to Recover Account where the user sets their new password
+Written by: Byron Billy
+FR: 4 UC: 3 */
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";

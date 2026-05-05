@@ -1,3 +1,6 @@
+/* Handles rendering the weekly view grid
+Written by: Byron Billy
+FRs: Any that have to do with daily,weekly and monthly view for the calendar */
 import { useEffect, useMemo, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";

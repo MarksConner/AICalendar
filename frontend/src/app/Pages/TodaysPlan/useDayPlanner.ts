@@ -1,3 +1,6 @@
+/* Helper functions all dealing daily timeline and Events rendered on the timeline
+Written by: Byron Billy
+FRs: All that deal with daily timeline and adding, editing and deleting Events on the timeline */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { DailyTimelineItem } from "../../Types/Calendar";
@@ -30,6 +33,7 @@ type UseDayPlannerArgs = {
   selectedView: CalendarView;
 };
 
+// ISO datetime strings are lexicographically sortable, so string comparison works correctly here
 const sortItemsByStart = (items: DailyTimelineItem[]) =>
   [...items].sort((a, b) => a.start.localeCompare(b.start));
 
@@ -68,8 +72,11 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     useState<EventInteractionState | null>(null);
   const [savingEventIds, setSavingEventIds] = useState<string[]>([]);
   const dayGridScrollRef = useRef<HTMLDivElement | null>(null);
+  // Ref mirror of eventTimeDrafts so pointer handlers can read the latest draft without stale closures
   const eventTimeDraftsRef = useRef<Record<string, EventTimeDraft>>({});
+  // Prevents the event detail panel from opening after a drag or resize completes
   const suppressOpenRef = useRef(false);
+  // Tracks the visible date so async responses arriving after navigation are discarded
   const selectedDateKeyRef = useRef(selectedDate.toDateString());
 
   const dateLabel = selectedDate.toLocaleDateString(undefined, {
@@ -79,10 +86,12 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
   });
   const isToday = selectedDate.toDateString() === new Date().toDateString();
 
+  // Keeps the ref in sync with state so pointer event handlers always read the latest drafts
   useEffect(() => {
     eventTimeDraftsRef.current = eventTimeDrafts;
   }, [eventTimeDrafts]);
 
+  // Keeps the ref in sync so stale date checks in async callbacks stay accurate
   useEffect(() => {
     selectedDateKeyRef.current = selectedDate.toDateString();
   }, [selectedDate]);
@@ -110,12 +119,15 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       });
   }, [selectedCalendarId, selectedDate, eventsRefreshKey]);
 
+  // Clears all drag/resize state when the user navigates to a different date
   useEffect(() => {
     setInteractionState(null);
     setEventTimeDrafts({});
     setSavingEventIds([]);
   }, [selectedDate]);
 
+  /* Debounces hints fetch by 180ms so a request isn't fired on every keystroke;
+  cancels in-flight requests if the time changes or the modal closes before they resolve */
   useEffect(() => {
     if (!isAddOpen) {
       setIsLoadingHints(false);
@@ -167,8 +179,8 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     };
   }, [isAddOpen, newTime, selectedCalendarId, selectedDate]);
 
-  // Apply in-progress drag/resize drafts (stored as HH:MM) to the item list for
-  // visual feedback, converting back to ISO datetimes before passing to the grid.
+  /* Overlays in-progress drag/resize times onto the real items for live visual feedback
+  without mutating the source data until the interaction is committed */
   const itemsWithDrafts = useMemo(
     () =>
       items.map((item) => {
@@ -196,6 +208,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     [items, selectedEventId]
   );
 
+  // Derived flag passed to the detail panel to disable actions while a save is in flight
   const isSelectedEventSaving = selectedEventId
     ? savingEventIds.includes(selectedEventId)
     : false;
@@ -205,6 +218,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     []
   );
 
+  // Only runs when viewing today in day view so it avoids unnecessary intervals on other dates/views
   useEffect(() => {
     if (!isToday || selectedView !== "day") return;
     setNowMinutes(getCurrentMinutes());
@@ -223,6 +237,8 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     container.scrollTop = Math.max(0, targetTop);
   }, [selectedDate, isToday, isLoading, selectedView]);
 
+  /* Applies drag/resize result optimistically, then rolls back to the previous snapshot on failure
+   Discards the response if the user has navigated away before it resolves */
   const persistDayEventTimeChange = useCallback(
     async (eventId: string, draft: EventTimeDraft | undefined) => {
       if (!draft) return;
@@ -271,6 +287,8 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     [items, selectedCalendarId, selectedDate]
   );
 
+  /* Initializes drag or resize state. Downplays detail-panel open immediately for resize
+   but not for move, since a move that doesn't travel far enough is treated as a click */
   const startEventInteraction = useCallback(
     (
       event: ReactPointerEvent<HTMLElement>,
@@ -349,6 +367,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       });
     };
 
+    // Reads draft from the reference rather than state to avoid a stale closure over the final pointer position
     const finishInteraction = () => {
       const draft = eventTimeDraftsRef.current[interactionState.eventId];
       setInteractionState(null);
@@ -466,7 +485,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
       }
       normalizedEnd = toISODateTime(selectedDate, minutesToTimeString(endMinutes));
     } else {
-      // Default to start + 60 min when end is cleared
+      // End time cleared by user: default to start + 60 min so the event has a valid duration
       normalizedEnd = toISODateTime(
         selectedDate,
         minutesToTimeString(Math.min(startMinutes + DEFAULT_DURATION_MINUTES, HOURS_IN_DAY * 60 - 1))
@@ -568,6 +587,7 @@ export function useDayPlanner({ selectedDate, selectedView }: UseDayPlannerArgs)
     }
   };
 
+  // Closes the detail panel if the selected event is removed from the list (ex deleted externally)
   useEffect(() => {
     if (!selectedEventId || selectedEvent) return;
     setIsEventDetailsOpen(false);

@@ -1,3 +1,6 @@
+/* This file handles the monthly view rendering of the calendar with Events
+Written by: Byron Billy
+FRs: none specifically but very nice to have */
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";

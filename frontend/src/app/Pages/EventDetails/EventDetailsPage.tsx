@@ -1,3 +1,6 @@
+/* Handles Event details so that when clicked it shows more info for an Event and allows editing, and deletion
+Written by: Byron Billy
+FRs: 10, 11, 15, 19, 20. UC: 9 and 11 */
 import { useParams } from "react-router-dom";
 import {
   Card,

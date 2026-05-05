@@ -1,8 +1,6 @@
-/**
- * AiSuggestionsPanel
- * Shows LLM-generated schedule insights, tips, and travel alerts for the selected day.
- * Sits alongside the DayGrid in the day view.
- */
+/* AiSuggestionsPanel Shows LLM-generated schedule insights, tips, and travel alerts for the selected day. Sits alongside the DayGrid in the day view.
+ Written by: Byron Billy
+ FRs: 10, 15, 23 */
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";

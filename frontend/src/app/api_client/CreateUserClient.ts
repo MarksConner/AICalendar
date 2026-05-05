@@ -1,3 +1,6 @@
+/* Handles the API calls when creating a new User
+Written by: Luis Perdomo 
+FRs: 1 */
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
 export interface CreateUserPayload {

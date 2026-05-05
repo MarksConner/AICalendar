@@ -1,3 +1,7 @@
+/* This file handles a lot of the main dashboard rendering and fetching for data between the various components 
+via the top-level layout wrapper
+Written by: Byron Billy
+FRs this file handles: 3, 5, 11, 16, 17, 19 */ 
 import { Outlet, useNavigate, useSearchParams } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Avatar from "@mui/material/Avatar";
@@ -43,13 +47,13 @@ const calendarViewOptions: Array<{ value: CalendarView; label: string }> = [
   { value: "month", label: "Month" },
 ];
 
-const isCalendarView = (value: string | null): value is CalendarView =>
+const isCalendarView = (value: string | null): value is CalendarView => //ensure a raw url string is valid CalendarView
   value === "day" || value === "week" || value === "month";
 
 const parseCalendarView = (value: string | null): CalendarView =>
   isCalendarView(value) ? value : "day";
 
-const toDateParam = (date: Date) => {
+const toDateParam = (date: Date) => {   //normalized YYYY-DD-MM URL parameters 
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -82,7 +86,7 @@ const addDays = (date: Date, amount: number) => {
   return next;
 };
 
-const startOfWeek = (date: Date) => addDays(date, -date.getDay());
+const startOfWeek = (date: Date) => addDays(date, -date.getDay());   //QOL line that starts the Views on every Sunday
 
 const formatHeaderDate = (date: Date, view: CalendarView) => {
   if (view === "month") {
@@ -114,7 +118,7 @@ const formatHeaderDate = (date: Date, view: CalendarView) => {
   });
 };
 
-const shiftDateByView = (date: Date, view: CalendarView, direction: -1 | 1) => {
+const shiftDateByView = (date: Date, view: CalendarView, direction: -1 | 1) => { // moves the date forward or backward on each View
   if (view === "week") {
     return addDays(date, direction * 7);
   }
@@ -126,6 +130,7 @@ const shiftDateByView = (date: Date, view: CalendarView, direction: -1 | 1) => {
   return addDays(date, direction);
 };
 
+/* optimizing so the AI chat window doesn't open load until clicked on */
 const LazyAiChatPanel = lazy(() =>
   import("./components/AiChatPanel").then((module) => ({
     default: module.AiChatPanel,
@@ -140,7 +145,7 @@ export function AppShell() {
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(
     () => localStorage.getItem("calendar_id") || null
   );
-  const [eventsRefreshKey, setEventsRefreshKey] = useState(0);
+  const [eventsRefreshKey, setEventsRefreshKey] = useState(0); //handles a refresh for Events
   const refreshEvents = useCallback(() => {
     setEventsRefreshKey((prev) => prev + 1);
   }, []);
@@ -154,6 +159,7 @@ export function AppShell() {
     [searchParams]
   );
 
+  /* Normalizaes URL parameters, sets defaults if day or view are not inputted correctly */
   useEffect(() => {
     const rawDate = searchParams.get("date");
     const rawView = searchParams.get("view");
@@ -174,6 +180,7 @@ export function AppShell() {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, selectedDate, selectedView, setSearchParams]);
 
+  /* refreshes when tab is focused on again */
   useEffect(() => {
     const refreshOnReturn = () => {
       const refreshToken = localStorage.getItem("refresh_token");

@@ -1,3 +1,7 @@
+/* Handles rendering the dashboard + local events tab
+Written by: Byron Billy and Conner Marks
+FRs: Any that have to do with editing the calendar, rendering the calendar and daily tasks + Events. Also Local Events FRs
+(sorry takes too much to add all of them) */
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";

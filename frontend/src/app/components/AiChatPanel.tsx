@@ -1,3 +1,6 @@
+/* This file handles the frontend functions of the AI chat window.
+Written by: Byron Billy and voice message pieces by Luis Perdomo
+FRs: 5, 6, 15, 17, 20, 22, 23, 24, 25 and 27 */
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import Box from "@mui/material/Box";
@@ -32,6 +35,7 @@ const initialMessages: ChatMessage[] = [
   },
 ];
 
+// localStorage key that persists the active chat session ID across page reloads
 const CHAT_ID_KEY = "chat_id";
 
 export const AiChatPanel = () => {
@@ -43,8 +47,10 @@ export const AiChatPanel = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [hasMicDraft, setHasMicDraft] = useState(false);
   const {selectedCalendarId, refreshEvents} = useCalendar();
+  // Location is passed to the AI so it can make location-aware suggestions (ex local events)
   const geolocation = useGeolocation(true);
 
+  // Stable instance, memoized so it isn't recreated on every render
   const chatClient = useMemo(() => new ChatClient(), []);
 
 
@@ -53,6 +59,7 @@ export const AiChatPanel = () => {
     setMessages(initialMessages);
   };
 
+  // Appends a new assistant bubble; falls back to a generic message if text is empty/blank
   const addAssistantMessage = (text: string) => {
     const normalized = text?.trim() || "I couldn't generate a response just yet.";
     setMessages((prev) => [
@@ -65,6 +72,8 @@ export const AiChatPanel = () => {
     ]);
   };
 
+  /* Normalizes inconsistent backend response shapes into a single display string.
+   Also maps known API error strings (quota, rate limit, missing calendar) to friendly messages. */
   const getAssistantTextFromPayload = (payload: any): string => {
     const normalizeMessage = (value: string) => {
       if (value === "Missing calendar_id for event creation.") {
@@ -113,6 +122,7 @@ export const AiChatPanel = () => {
     return "I couldn't generate a response just yet.";
   };
 
+  // Backend sends sender_is as a boolean, integer (1/0), or string so it normalizes all forms to bool
   const parseSenderIs = (value: any): boolean | null => {
     if (value === true) return true;
     if (value === false) return false;
@@ -129,6 +139,7 @@ export const AiChatPanel = () => {
     return null;
   };
 
+  // Resolves message role from either sender_is or role field, defaulting to "assistant"
   const getMessageRole = (msg: any): "user" | "assistant" => {
     const senderIs = parseSenderIs(msg.sender_is);
 
@@ -142,6 +153,7 @@ export const AiChatPanel = () => {
     return "assistant";
   };
 
+  // On mount: restores an existing chat session from localStorage, or shows the welcome message
   useEffect(() => {
     const savedChatId = localStorage.getItem(CHAT_ID_KEY);
 
@@ -154,6 +166,7 @@ export const AiChatPanel = () => {
     loadPreviousMessages(savedChatId);
   }, []);
 
+  // Resets the chat session whenever the selected calendar changes. Ensures history belongs to a specific calendar
   useEffect(() => {
     setChatId(null);
     localStorage.removeItem(CHAT_ID_KEY);
@@ -218,6 +231,7 @@ export const AiChatPanel = () => {
       console.log("AiChatPanel calendarId for askAI:", calendarId);
 
       let currentChatId = chatId || localStorage.getItem(CHAT_ID_KEY);
+      // First message in a new chat is included in createChatAPI, so only persist it for existing chats
       let shouldPersistUserMessage = Boolean(currentChatId);
 
       if (!currentChatId) {
@@ -277,8 +291,10 @@ export const AiChatPanel = () => {
 
       const assistantText = getAssistantTextFromPayload(aiData);
       addAssistantMessage(assistantText);
+      // Deferred so React finishes rendering the assistant reply before the calendar re-fetches
       window.setTimeout(refreshEvents, 0);
 
+      // Persists messages to the backend without blocking the UI ensures failures are logged but not surfaced
       if (currentChatId) {
         void (async () => {
           try {
@@ -312,6 +328,7 @@ export const AiChatPanel = () => {
     await sendCurrentDraft();
   };
 
+  // Three-state mic button
   const handleMicClick = async () => {
     if (isLoading || isHistoryLoading) return;
 

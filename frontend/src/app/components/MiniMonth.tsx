@@ -1,3 +1,6 @@
+/* file that handles rendering of the mini-month on the dashboard
+Written by: Byron Billy
+FRs: None specifically but helps user navigate to different days easily */
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";

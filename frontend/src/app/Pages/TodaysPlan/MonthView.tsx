@@ -1,3 +1,6 @@
+/* Helps with rendering the Monthly view
+Written by: Byron Billy
+FRs: 11, 19 */
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";

@@ -1,3 +1,5 @@
+/* File that help for rendering an Event after resizing
+Written by: Byron Billy */
 import Box from "@mui/material/Box";
 import ButtonBase from "@mui/material/ButtonBase";
 import Typography from "@mui/material/Typography";

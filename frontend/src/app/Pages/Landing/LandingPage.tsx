@@ -1,3 +1,7 @@
+/* Handles our landing page/main website page we added *AI USE* I used AI to help with a lot of this project but this page relied on it a LOT
+due to time constraints. 
+Written by: Byron Billy
+FRs: No specific FRs but does link to User Creation page. */
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
@@ -107,7 +111,7 @@ function NavBar() {
   );
 }
 
-// Full-height hero with tagline, Get Started CTA, and a decorative AI card mockup
+/* Full-height hero with tagline, Get Started CTA, and a decorative AI card mockup */
 function HeroSection() {
   const navigate = useNavigate();
   return (

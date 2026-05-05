@@ -1,3 +1,5 @@
+/* Theme context file that handles when to pull 'dark' mode for the user (in the dashboard)
+Written by: Byron Billy */
 import { createContext, useContext, useMemo, useState } from "react";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";

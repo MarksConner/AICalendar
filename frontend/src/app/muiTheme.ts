@@ -1,3 +1,4 @@
+/* Our main theming style with MUI including theming for light/dark modes */
 import { createTheme } from "@mui/material/styles";
 import type { PaletteMode } from "@mui/material";
 

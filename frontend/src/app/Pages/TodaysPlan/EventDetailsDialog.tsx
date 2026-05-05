@@ -1,3 +1,6 @@
+/* File that handles rendering Event details when clicked + editing/modifying the Events at User's will
+Written by: Byron Billy
+FRs: All that have to do with editing and viewing Events */
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";

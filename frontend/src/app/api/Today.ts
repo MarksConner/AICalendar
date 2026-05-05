@@ -225,7 +225,7 @@ const ensureStore = () => {
   return memoryStore;
 };
 
-/** Replace the placeholder prefix with the actual YYYY-MM-DD key. */
+/* Replace the placeholder prefix with the actual YYYY-MM-DD key. */
 const seedItemsForDate = (dateKey: string): DailyTimelineItem[] =>
   MOCK_SEED_ITEMS.map((item, i) => ({
     ...item,

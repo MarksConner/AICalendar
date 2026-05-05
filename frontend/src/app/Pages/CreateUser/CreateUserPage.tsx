@@ -1,3 +1,6 @@
+/* Page that handles the frontend functions of the Create User page
+Written by: Byron Billy
+FRs: 1 */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { keyframes } from "@mui/system";

@@ -1,3 +1,4 @@
+/* Mock data for development purposes */
 import type { CalendarEvent } from "../Types/Calendar";
 
 const MOCK_EVENTS: CalendarEvent[] = [

@@ -1,3 +1,5 @@
+/* Layout shell for dialogue box used for publishing calendars
+Written by: Luis Perdomo */ 
 import type { ReactNode } from "react";
 import Dialog from "@mui/material/Dialog";
 import Box from "@mui/material/Box";

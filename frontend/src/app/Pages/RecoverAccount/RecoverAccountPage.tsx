@@ -1,3 +1,6 @@
+/* Frontend page where the User can reset their password to regain access to their account
+Written by: Byron Billy
+FRs: 4 UC: 3 */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";

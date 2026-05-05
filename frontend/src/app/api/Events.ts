@@ -1,3 +1,4 @@
+/* Helps with JSON request calls for the backend for Events */ 
 const API_BASE_URL = import.meta.env.VITE_BASE_API_URL ?? "http://127.0.0.1:8000";
 
 export interface LocalEventSuggestion {

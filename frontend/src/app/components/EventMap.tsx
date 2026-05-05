@@ -1,3 +1,6 @@
+/* Handles rendering the MapBox map component when viewing event details
+Written by: Byron Billy
+FR: 13 */
 import Map, { Marker } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Box from "@mui/material/Box";

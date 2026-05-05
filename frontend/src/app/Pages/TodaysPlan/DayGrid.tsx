@@ -1,3 +1,6 @@
+/* handles the rendering of the daily grid
+Written by: Byron Billy
+FRs: Any that have to do with the daily grid and viewing, editing and setting Events/Tasks */
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import type { MutableRefObject } from "react";

@@ -1,3 +1,7 @@
+/* File that handles the AI suggestions next to the daily grid. Grabs user's calendar Events and Tasks, then requests feedback from 
+OpenAI API about what to move, travel warnings, Events left for the day. (Query help is handled in the backend)
+Written by: Byron Billy
+FRs covered: 15,22, 23. UC 10 and 13  */
 import type { DailyTimelineItem } from "../Types/Calendar";
 import type { AiSuggestionsResponse } from "../services/contracts";
 import { requestJson } from "../services/adapters/http/httpClient";

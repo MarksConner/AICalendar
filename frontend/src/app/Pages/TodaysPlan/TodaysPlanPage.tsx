@@ -1,3 +1,6 @@
+/* Render the box the dailyTimeline is in
+Written by: Byron Billy
+FRs: Any to do with daily timeline */
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";

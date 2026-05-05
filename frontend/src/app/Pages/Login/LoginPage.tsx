@@ -1,3 +1,6 @@
+/* Page that handles the frontend implementation of Logging a User in
+Written by: Byron Billy
+FRs: 2/3 UC: 2 */
 import { useNavigate } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import Box from "@mui/material/Box";

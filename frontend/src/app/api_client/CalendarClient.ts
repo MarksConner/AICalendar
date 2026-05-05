@@ -1,3 +1,6 @@
+/* File that handles all API calls for the calendar + Events
+Written by: Luis Perdomo
+FRs: All of the ones deaing with the Calendar due to calls, including exporting importing ICS file */
 import type { CreateEventFormData } from "../components/CreateEventDialog";
 import { handleSessionTimeout } from "../services/auth/sessionTimeout";
 import { tryRefreshAccessToken } from "../services/adapters/http/httpClient";

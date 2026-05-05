@@ -1,3 +1,5 @@
+/* Typescript router file that handles routing and navigation
+   Written by: Byron BIlly */
 import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 

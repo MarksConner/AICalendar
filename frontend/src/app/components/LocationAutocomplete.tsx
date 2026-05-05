@@ -1,3 +1,6 @@
+/* File that handles the autocomplete feature when adding a location in Events or Tasks
+Written by: Byron Billy
+FRs: 13 */
 import { useState, useEffect, useRef, useCallback } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";

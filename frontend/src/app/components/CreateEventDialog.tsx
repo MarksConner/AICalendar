@@ -1,3 +1,6 @@
+/* Handles the window when creating an Event or Importing a calendar from ICS
+Written by Byron Billy (handled event dialog boxing) and Luis Perdomo (Create Event and ICS importing details)
+FRS: 7, 8, 16, 20 */
 import type { FormEvent, ChangeEvent } from "react";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -64,6 +67,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
   const [icsFile, setIcsFile] = useState<File | null>(null);
   const userId = localStorage.getItem("user_id") || "";
 
+  // Fetches the user's calendars each time the dialog opens and pre-selects the first one
   useEffect(() => {
       if (isOpen) {
         const calendarOptionsClient = new CalendarClient();
@@ -108,11 +112,13 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
     onClose();
   };
 
+  // MUI toggle can pass null when clicking the already-selected option. This guard prevents deselection
   const handleModeChange = (_event: React.MouseEvent<HTMLElement>,newMode: DialogMode | null ) => {if (!newMode) return;
     setMode(newMode);
     setError(null);
   };
 
+  // Curried field updater. Returns an onChange handler for the given form field
   const handleEventChange = (field: keyof CreateEventFormData) =>
     (event: ChangeEvent<HTMLInputElement>) => {
       setEventFormData((prev) => ({
@@ -130,6 +136,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
       }));
     };
 
+  // Start/end times are optional together (all-day events), but end must not precede start if both are set
   const validateEventForm = () => {
     if (!eventFormData.title.trim()) return "Title is required.";
     if (!eventFormData.calendar_id) return "Calendar is required.";
@@ -150,6 +157,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
     return null;
   };
 
+  // Branches on mode: event creation, blank calendar creation, or ICS file import
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const validationError = mode === "event" ? validateEventForm() : validateCalendarForm();
@@ -170,6 +178,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
           console.log("Create event payload:", eventFormData);
         }
       } else {
+        // Attaching an .ics file switches submit from creating a blank calendar to importing
         if (icsFile) {
           if (!userId) {
             setError("User ID not found. Please log in again.");
@@ -277,6 +286,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <Box sx={{ flex: 1 }}>
+                  {/* Both times are optional (supports all-day events), but required together if neither is set */}
                   <Input
                     label="Start time"
                     type="datetime-local"
@@ -341,6 +351,7 @@ export const CreateEventDialog = ({isOpen, onClose, onSubmitEvent,onSubmitCalend
                 required
               />
 
+              {/* Optional .ics file — if provided, submit imports it instead of creating a blank calendar */}
               <Input
                 type="file"
                 onChange={(e) => {

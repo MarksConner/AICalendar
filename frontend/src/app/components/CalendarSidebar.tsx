@@ -1,3 +1,7 @@
+/* File that handles the MiniCalendar on the left-side panel. Also Create button logic and multi-schedule toggles for viewing
+and import/export + publishing
+Written by: Byron Billy and Luis Perdomo
+FRs: 7, 8, 11, 16, 28 and 29 UC: 6 and 7 */
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -28,11 +32,14 @@ export const CalendarSidebar = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [calendarToDelete, setCalendarToDelete] = useState<BackendCalendar | null>(null);
 
+  // Two separate dialogs for publishing: one to confirm the action, one to display the resulting link
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [calendarToPublish, setCalendarToPublish] = useState<BackendCalendar | null>(null);
   const [displayPublishedCalendarLink, setDisplayPublishedCalendarLink] = useState(false);
   const [publishedCalendarLink, setPublishedCalendarLink] = useState("");
 
+  /* On mount: fetches the user's calendars and restores the last selected one from localStorage,
+  falling back to the first calendar if the stored ID is no longer valid */
   useEffect(() => {
     const fetchCalendars = async () => {
       try {
@@ -64,6 +71,7 @@ export const CalendarSidebar = () => {
     fetchCalendars();
   }, []);
 
+  // Switching calendars clears chat state since chat history is scoped to a specific calendar
   const handleToggleCalendar = (id: string) => {
     setSelectedCalendarId(id);
     localStorage.setItem("calendar_id",id)
@@ -83,6 +91,7 @@ export const CalendarSidebar = () => {
     refreshEvents();
   };
 
+  // After creation, re-fetches the full list and auto-selects the newest calendar
   const handleCreateCalendar = async (calendarData: CreateCalendarFormData) => {
     const calendarClient = new CalendarClient();
     const user_id = localStorage.getItem("user_id");
@@ -115,6 +124,8 @@ export const CalendarSidebar = () => {
     }
   };
 
+  /* After deletion, falls back to the first remaining calendar (or clears selection if none left)
+  and clears chat state since the chat was scoped to the deleted calendar */
   const handleDeleteCalendar = async () => {
     if (!calendarToDelete) return;
 
@@ -159,6 +170,8 @@ export const CalendarSidebar = () => {
     }
   };
 
+  /* Publishes the calendar, builds a public URL from the returned token, updates local state,
+  then attempts to copy the link to the clipboard automatically */
   const handlePublishCalendar = async () => {
     if (!calendarToPublish) return;
 
@@ -281,6 +294,7 @@ export const CalendarSidebar = () => {
                     variant="ghost"
                     startIcon={<Download size={16} />}
                     onClick={async (e) => {
+                      // Creates a temporary anchor element to trigger an .ics file download, then removes it
                       e.stopPropagation();
 
                       if (!calendar.calendar_id) return;
@@ -312,6 +326,7 @@ export const CalendarSidebar = () => {
                       }}
                       sx={{
                         ml: 0.5,
+                        // Icon turns red when the calendar is already public to indicate its current status
                         color: isPublic ? "error.main" : "text.secondary",
                         "&:hover": {
                           color: isPublic ? "error.dark" : "primary.main",

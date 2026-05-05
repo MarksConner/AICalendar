@@ -1,3 +1,6 @@
+/* File that handles a lot of the different utilities with daily calendar grid such as drag and drop, tiling etc
+Written by: Byron Billy
+FRs: Any that have to do with rendering the daily grid. */
 import type { DailyTimelineItem } from "../../Types/Calendar";
 
 export const HOURS_IN_DAY = 24;

@@ -1,3 +1,5 @@
+/* Handles API calls for Events on the Calendar 
+Written by: Luis Perdomo */
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 
 export interface AddEventPayload {

@@ -1,4 +1,6 @@
-
+/* Handles non-mock API calls/JSON requests for account authorization from backend for frontend integration
+Written by: Luis Perdomo
+FRs covered: 1-4 UC: 1-4 */
 const BASE_API_URL = import.meta.env.VITE_BASE_API_URL;
 export interface LoginPayload {
   email: string;

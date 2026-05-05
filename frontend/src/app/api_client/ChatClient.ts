@@ -1,3 +1,6 @@
+/* Handles the API calls for the AI Chat sidewindow
+Written by: Luis Perdomo
+FRs: All the ones dealing with AI in the chatbox. */
 import { buildUserTimezoneAndTimeObject } from "../Pages/TodaysPlan/dayPlannerUtils";
 import { handleSessionTimeout } from "../services/auth/sessionTimeout";
 import { tryRefreshAccessToken } from "../services/adapters/http/httpClient";

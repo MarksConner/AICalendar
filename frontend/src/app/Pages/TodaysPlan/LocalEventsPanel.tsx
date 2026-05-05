@@ -1,8 +1,6 @@
-/**
- * LocalEventsPanel
- * Renders inside a SidePanel and opens when the user clicks "Local events" in the app bar.
- * Uses the selected date from CalendarContext directly — no props needed for date/items.
- */
+/* LocalEventsPanel Renders inside a SidePanel and opens when the user clicks "Local events" in the app bar. Uses the selected date from CalendarContext directly.
+ Written by: Byron Billy and Conner Marks
+ FRs: Any dealing with Local Events and rednering Local Events */
 import { useMemo, useState } from "react";
 import { useCalendar } from "../../contexts/useCalendar";
 import { dataService } from "../../services";
