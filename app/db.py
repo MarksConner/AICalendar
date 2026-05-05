@@ -1,3 +1,5 @@
+# Database Configuration
+# Written By: Luis Matheus Perdomo
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
