@@ -1,10 +1,14 @@
+
+# Messages_service.py
+# Handles messages creation, deletion and updates in the database.
+# Written by: Luis Matheus Perdomo
 from datetime import datetime
 from uuid import UUID
 from sqlalchemy.orm import Session
 from app.models.chat import Chat
 from app.models.messages import Messages
 
-
+# Creates a message in  the database
 def create_message(session: Session,chat_id: UUID,content: str, sender_is: bool,file_url: str | None =None) -> Messages:
     new_message = Messages(chat_id = chat_id, content=content,sender_is=sender_is,file_url = file_url)
     session.add(new_message)
@@ -21,7 +25,7 @@ def get_message_by_id(session: Session, message_id: UUID) -> Messages|None:
 def get_messages_by_chat_id(session: Session,chat_id: UUID,) -> list[Messages]:
     return (session.query(Messages).filter(Messages.chat_id == chat_id).order_by(Messages.sent_at.asc()).all())
 
-
+# Updates message content in the database.
 def update_message_content(session: Session,message_id: UUID,user_id: UUID,new_content: str,) -> bool:
 
     message = (session.query(Messages).filter(Messages.message_id == message_id,Messages.sender_id == user_id).one_or_none())
