@@ -1,3 +1,6 @@
+# Chat Model
+# Defines an ORM model that maps the chat table in the database to a Python class.
+# Written by: Luis Matheus Perdomo
 from sqlalchemy import Column, Text, TIMESTAMP, ForeignKey, func, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
