@@ -1,3 +1,8 @@
+# Messages API routes.
+# Routes that allow api_client + appDataService to connect to the database related operations in the messages services. 
+# Written By: Luis Matheus Perdomo
+
+# Inherits all the FR's of calendars services.
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
