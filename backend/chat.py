@@ -1,3 +1,11 @@
+# Main chat api route and helpers.
+# Used to communicate with the AI agent. This section uses the LLM to parse user's intent and provides the necessary logic to execute the tasks. Makes service to the database directly
+# Written by: Conner Marks, Luis Matheus Perdomo
+
+#Functional Requirements
+#FR6
+#FR 21 Through 26
+
 from datetime import timedelta, date
 import json
 import uuid
@@ -908,7 +916,7 @@ def _build_schedule_query_response(calendar_context: dict | None, query_type: st
         "events": scoped_events,
     }
 
-
+#Written by Luis and Conner
 @router.post("")
 def chat(data: UserMessage):
 
@@ -1557,6 +1565,7 @@ WEEKDAY_MAP = {"MO": 0,"TU": 1,"WE": 2,"TH": 3,"FR": 4,"SA": 5,"SU": 6,}
 def parse_hhmm(value: str):
     return datetime.strptime(value, "%H:%M").time()
 
+# Written by Luis: takes a dict of actions and returns a list of tuples with start time and end time.
 def handle_recurrence(action: dict[str, Any]) -> list[tuple[datetime, datetime]]:
     recurrence = action.get("recurrence") or {}
 
