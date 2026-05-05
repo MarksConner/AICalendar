@@ -1,3 +1,6 @@
+# Events Model
+# Defines an ORM model that maps the events table in the database to a Python class.
+# Written by: Luis Matheus Perdomo
 from sqlalchemy import Column, String, Text, Integer, Float, TIMESTAMP, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import func
