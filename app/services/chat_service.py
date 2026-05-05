@@ -1,3 +1,11 @@
+# Chat Service
+# Defines chat creation, deletion, modifications, and retrieval in the database. 
+# Written by: Luis Matheus Perdomo
+
+# Functional Requirements
+# FR5: Allows user to chat by using the database object to display messages.
+# FR6: Allows AI agent to pull chat context to perfom operations
+
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -35,11 +43,7 @@ def delete_chat(session: Session, chat_id: UUID, user_id: UUID) -> bool:
 
 # Update only the chat title
 def update_chat_title(session: Session, chat_id: UUID, user_id: UUID, new_title: str) -> bool:
-    chat = (
-        session.query(Chat)
-        .filter(Chat.chat_id == chat_id, Chat.user_id == user_id)
-        .one_or_none()
-    )
+    chat = (session.query(Chat).filter(Chat.chat_id == chat_id, Chat.user_id == user_id).one_or_none())
 
     if chat is None:
         raise ValueError("Chat not found")
@@ -68,7 +72,7 @@ def add_message_to_chat(session: Session,chat_id: UUID,content: str,)->Messages:
 def get_messages_by_chat_id(session: Session, chat_id: UUID) -> list[Messages]:
     return (session.query(Messages).filter(Messages.chat_id == chat_id).order_by(Messages.sent_at.asc()).all())
 
-
+# Deletes an specific message from the chat
 def delete_message_from_chat(session: Session, message_id: UUID, user_id: UUID) -> bool:
     message = (session.query(Messages).filter(Messages.message_id == message_id).one_or_none())
     if message is None:
@@ -98,7 +102,7 @@ def update_message_content(session: Session, message_id: UUID, user_id: UUID, ne
     return True
 
 
-# summarizes chat history for a given chat id
+# Misleading name. It combines last 8 messages in the string. 
 def summarize_chat_history(session: Session, chat_id: UUID) -> str:
     messages = (session.query(Messages).filter(Messages.chat_id == chat_id).order_by(Messages.sent_at.asc()).all())
 
@@ -110,7 +114,7 @@ def summarize_chat_history(session: Session, chat_id: UUID) -> str:
 
     return " ".join(message.content for message in messages)
 
-
+# Check if chat has more than 8 messages returns boolean.
 def more_than_8_messages(session: Session, chat_id: UUID) -> bool:
     messages = (
         session.query(Messages)
