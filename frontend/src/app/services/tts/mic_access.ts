@@ -1,3 +1,9 @@
+/*
+This module uses MDN functions to handle microphone access. 
+Written By: Luis Matheus Perdomo
+FR 27
+*/
+
 // MIC Access Module
 // This module handles access to the user's microphone for speech to text.
 // It checks for permissions and retrieves the audio track from the user's microphone.
