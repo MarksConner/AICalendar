@@ -1,3 +1,8 @@
+/*
+Front end page which displays user's public calendar. 
+Written By: Luis Matheus Perdomo
+FR 28 and 29
+*/
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
