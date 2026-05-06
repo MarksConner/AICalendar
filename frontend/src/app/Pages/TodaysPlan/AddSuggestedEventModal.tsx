@@ -1,3 +1,8 @@
+/*
+This module uses handles suggestion of events.
+Written By: Luis Matheus Perdomo, Byron Billy, Conner marks
+FR 27
+*/
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import MenuItem from "@mui/material/MenuItem";
