@@ -1,3 +1,8 @@
+/*
+This module uses MDN functions to handle microphone parsing. It handles timeouts, speech recognition, parsing and finally it generates a transcript.
+Written By: Luis Matheus Perdomo
+FR 27
+*/
 import { accessMicrophone } from "./mic_access";
 
 let activeRecognition: any = null;
