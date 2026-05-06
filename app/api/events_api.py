@@ -1,6 +1,6 @@
 # Events API'S
 # Routes that allow api_client + appDataService to connect to the database related operations in the events services. 
-# Written By: Luis Matheus Perdomo, Conner and Edgar
+# Written By: Luis Matheus Perdomo, Conner and Edgar (get_travel_time)
 
 # Inherits all the FR's of events services + mapbox distance operations.
 from uuid import UUID

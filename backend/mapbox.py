@@ -1,3 +1,8 @@
+"""
+Authors: Conner Marks, Edgar Rodriguez-Angulo
+FR7: Fetch the travel time between two locations, as requested by the user
+"""
+
 import requests
 import os
 from urllib.parse import quote
